@@ -1,5 +1,5 @@
 # NanoSplicer
-NanoSplicer is a program for accurately identify splice sites using Nanopore data (both basecalls and squiggles).
+NanoSplicer is a program for accurately identify splice juncitons using Nanopore data (both basecalls and squiggles).
 
 
 ## Keywords:
