@@ -6,7 +6,6 @@ import numpy as np
 import h5py
 import os
 from collections import defaultdict
-import scrappy
 import matplotlib.pyplot as plt
 import sys
 
@@ -264,3 +263,8 @@ class Fast5Class(object):
 		'''
 		normalised_signal = np.array(normalised_signal)
 		return normalised_signal[np.abs(normalised_signal < thresh)]	
+
+def err_msg(msg):
+	CRED = '\033[91m'
+	CEND = '\033[0m'
+	print(CRED + msg + CEND)	

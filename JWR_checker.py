@@ -27,6 +27,7 @@
 '''
 import h5py
 import pandas as pd
+import textwrap
 import pysam
 import os
 import re
@@ -37,6 +38,7 @@ from tqdm import tqdm
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import multiprocessing as mp
+import helper
 
 # modify the output HDF5 file
 class JWR_to_hdf(h5py.File):    
@@ -75,7 +77,6 @@ class JWR_from_reads:
                     yield JWR_class(read, (junc_start, base_position),read.reference_name)
         #             introns.append((junc_start, base_position))
         # return introns
-
 
 class JWR_class:
     def __init__(self, read, loc, chrID):
@@ -193,22 +194,21 @@ class JWR_checker_param:
                         ["help", 
                          "window=",
                          "chrID=",
-                         "genome-loc="])
+                         "genome-loc=",
+                         "--threads"])
         except getopt.GetoptError:
-            print("ERROR:Invalid input.")
-            print_help()
+            helper.err_msg("ERROR:Invalid input.")
+            self.print_help()
             sys.exit(1)
         
-
         # DEFAULT VALUE
         self.junc_cigar_win = 25
-        self.bamfile, self.outfile = args
         self.chrID, self.g_loc = None, None
-
+        self.threads = 32
 
         for opt, arg in opts:
             if opt in ("-h", "--help"):
-                print_help()
+                self.print_help()
                 sys.exit(0)
             elif opt in ("-w", "--window"):
                 self.junc_cigar_win = int(arg)
@@ -217,19 +217,36 @@ class JWR_checker_param:
             elif opt == "--genome-loc":
                 self.g_loc =\
                     tuple([int(i) for i in arg.split('-')])
+                if len(self.g_loc) != 2:
+                    helper.err_msg("ERROR:Invalid genome-loc.")
+                    sys.exit(1)
+            elif opt == "--threads":
+                self.threads = int(arg)
+        
+        if len(args) <2:   
+            helper.err_msg("ERROR:Invalid input.")
+            self.print_help()
+            sys.exit(1)
+        self.bamfile, self.outfile = args            
 
     def print_help(self):
         help_message =\
         '''
+        Finding junctions within reads (JWRs) from a spliced mapping result (BAM). 
+
         Usage: python {} [OPTIONS] <BAM file> <output file>
+        
         Options:
             -h/--help        Print this help text
             -w/--window      Candidate searching window size <default: 25>
             --chrID          Target on specific chromosome, chrID should match
-                                the chromosome name in the BAM
+                                the chromosome name in the BAM. All chromosome 
+                                in the BAM will be searched if not specified
             --genome-loc     Target on specific genome region, chrID should be 
-                                specified. e.g. --genome-loc=0-10000
-        '''.format(argv[0])
+                                specified. e.g. --genome-loc=0-10000. Entire 
+                                chromosome will be searched if not specified
+            --threads        Number of threads used <default: 32>.
+        '''.format(sys.argv[0])
 
         print(textwrap.dedent(help_message))
 
@@ -265,24 +282,27 @@ def chunks(lst, n):
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
 
-
 def main():
     param = JWR_checker_param()
     algn_file = pysam.AlignmentFile(param.bamfile)
-    reads_fetch = algn_file.fetch()
-    # reads_fetch = algn_file.fetch(param.chrID,
-    #                                 param.g_loc[0], 
-    #                                 param.g_loc[1])
+    reads_fetch = algn_file.fetch(param.chrID,
+                                    param.g_loc[0], 
+                                    param.g_loc[1])
+
+
     JWR_fetch = JWR_from_reads(reads_fetch)
+
     JWRs = list(JWR_fetch.get_JWR())
-    print(len(JWRs))
-
-    executor = concurrent.futures.ProcessPoolExecutor(64)    
+    # JWRs = [x for x in JWRs if x.loc[0] > param.g_loc[0] - 50 and 
+    #              x.loc[1] < param.g_loc[1] + 50 ]
+    
+    print("Calculating JAQ for {} JWRs found".format(len(JWRs)))
+    executor = concurrent.futures.ProcessPoolExecutor(param.threads)    
     futures = [executor.submit(get_row, jwr, param.junc_cigar_win) for jwr in chunks(JWRs, 500)]
-
+    
     pbar = tqdm(total = len(JWRs))
     for future in as_completed(futures):   
-        pbar.update(1)
+        pbar.update(500)
 
     d = pd.concat([x.result() for x in futures])
 
@@ -291,10 +311,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-

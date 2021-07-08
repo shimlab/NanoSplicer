@@ -123,8 +123,8 @@ def canonical_site_finder(aligned_seg, candidate_Interval, ref_FastaFile,
         ts = None
 
     donor_pattern = ref_FastaFile.fetch(chrID, start - window, \
-                                        start + window).upper()
-    acceptor_pattern = ref_FastaFile.fetch(chrID, end - window, \
+                                        start + window + 2).upper()
+    acceptor_pattern = ref_FastaFile.fetch(chrID, end - window - 2, \
                                         end + window).upper()
 
     if ts == '+':

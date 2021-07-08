@@ -50,10 +50,10 @@ from ont_fast5_api.fast5_interface import get_fast5_file
 from scipy.stats.mstats import theilslopes
 
 # denosing
-from skimage.restoration import denoise_wavelet
+#from skimage.restoration import denoise_wavelet
 import helper
-from junction_identification_for_chekcer_version import find_candidate, canonical_site_finder, \
-                                                        candidate_motif_generator
+from junction_identification import find_candidate, canonical_site_finder, \
+                                                    candidate_motif_generator
 from dtw import dtw
 
 # configuration
@@ -63,35 +63,33 @@ def parse_arg():
     def print_help():
         help_message =\
         '''
-        Usage: python {} [OPTIONS] <checker hdf5 file>
+        Usage: python {} [OPTIONS] <JWR_checker/JWR_subset hdf5 file>
         Options:
             -i      .bam/.sam file (required)
             -f      path to fast5s (required)
             -r      Genome reference file (required)
-            -o      output path <default: "NanoSplicer_out">
+            -o      output filename <default: 'NanoSplicer_out'>
+        For developer:
             -T      Number of events trimmed from scrappie model <default: 2>
             -t      Number of bases trimmed from raw signam, the raw samples are
                         match to basecalled bases by tombo <default :6>
             -F      Flanking sequence size in each side of candidate searching 
                         window <default: 20>
             -w      Candidate searching window size <default: 10>
-            -c      config file name
+            -c      Config filename <default: 'config'>
         '''.format(argv[0])
         print(textwrap.dedent(help_message))
     
     argv = sys.argv
-    if len(argv) <= 2:     
-        print_help()       # print help doc when no command line args provided
-        sys.exit(0)
     
     try: 
         opts, args = getopt.getopt(argv[1:],"hi:f:r:o:T:t:ab:F:w:c:",
-                    ["help=","input_alignment=","input_fast5_dir=",
+                    ["help","input_alignment=","input_fast5_dir=",
                     "genome_ref=","output_path=", "trim_model=",
                     "trim_signal=","dtw_adj","bandwidth=",
                     "flank_size=", "window=", "config_file="])
     except getopt.GetoptError:
-        print("ERROR:Invalid input.")
+        helper.err_msg("Error: Invalid argument inpurt") 
         print_help()
         sys.exit(1)
 
@@ -105,9 +103,7 @@ def parse_arg():
     flank_size = 20
     window = 10
     config_file = 'config'
-    print(opts)
-    pd_file = args[0]
-
+    
     for opt, arg in opts:
         if opt in  ("-h", "--help"):
             print_help()
@@ -134,10 +130,18 @@ def parse_arg():
            window = int(arg)
         elif opt in ("-c", "--config_file"):
            config_file = str(arg)
+    
 
+    if not args:
+        helper.err_msg("Error: Invalid argument inpurt")   
+        print_help()# print help doc when no command line args provided
+        sys.exit(0)
+    pd_file = args[0]
+    
+    
     # check input
     if not alignment_file or not fast5_dir or not genome_ref:
-        print("Error:Missing input files.")
+        helper.err_msg("Error:Missing input files.") 
         sys.exit(1)
 
     # choose the version of dtw (sum: minimize the sum of cost for the path)
@@ -167,11 +171,8 @@ def main():
         names = [x for x in mdl.__dict__ if not x.startswith("_")]
     globals().update({k: getattr(mdl, k) for k in names})
     
-
     chrID = CHROMOSOME_NAME
     out_fn = OUTPUT_FILENAME
-    
-
     # import data
     test_df = pd.read_hdf(pd_file, key = 'data')
     
@@ -215,6 +216,7 @@ def main():
     for future in as_completed(futures):   
         pbar.update(1)
     pd.concat([x.result() for x in futures]).to_csv("error_summary.csv")
+
 
 def write_err_msg(d, jwr, error_msg):
     '''
@@ -808,17 +810,19 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
 
                 f = open(output_file+'.tsv', "a")
                 #fcntl.flock(f,fcntl.LOCK_EX)
-                f.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
+                f.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
                     jwr.id,
                     str(jwr.loc),
                     jwr.JAQ,
                     ','.join([str(x)+','+str(y) for x,y in candidate_tuples]),
                     index_m,
                     ','.join([str(x) for x in candidate_preference]),
-                    ','.join([str(x) for x in segment_Si]),
+                    np.max(segment_Si),
+                    #','.join([str(x) for x in segment_Si]),
                     ','.join([str(x) for x in dist_seg_logLR]),
                     ','.join([str(x) for x in post_prob]),
-                    ','.join([str(x) for x in post_prob_prior])
+                    ','.join([str(x) for x in post_prob_prior]),
+                    np.max(post_prob_prior)
                     ))
                     # fcntl.flock(f,fcntl.LOCK_UN)
                 f.close()
