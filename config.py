@@ -27,6 +27,7 @@ UNIFORM_DWELL = 4
 MINIMUM_POINT_FOR_DIST_SEG = 4
 
 # prior ratio for sequence pattern
+PATTERN_PREFERENCE = True
 PRIOR_RATIO = 9
 
 # output
