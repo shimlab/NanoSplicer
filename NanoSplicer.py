@@ -95,7 +95,7 @@ def parse_arg():
 
     # DEFAULT VALUE
     alignment_file, fast5_dir, genome_ref = None, None, None
-    output_path = 'NanoSplicer_out'
+    output_path = None
     trim_signal = 6
     trim_model = 0
     dtw_adj = False
@@ -159,7 +159,7 @@ def parse_arg():
 
 def main():
     # parse command line argument
-    fast5_dir, output_path, alignment_file, genome_ref, \
+    fast5_dir, out_fn, alignment_file, genome_ref, \
         bandwidth, trim_model, trim_signal, \
         flank_size, window, cfg_file, pd_file =  parse_arg()
 
@@ -172,37 +172,26 @@ def main():
     globals().update({k: getattr(mdl, k) for k in names})
     
     chrID = CHROMOSOME_NAME
-    out_fn = OUTPUT_FILENAME
+    if not out_fn:
+        out_fn  = OUTPUT_FILENAME
     # import data
-    test_df = pd.read_hdf(pd_file, key = 'data')
+    jwr_df = pd.read_hdf(pd_file, key = 'data')
     
     # get fast5 filenames recursively
     fast5_paths = Path(fast5_dir).rglob('*.fast5') # iterator
     fast5_paths = list(fast5_paths)
+    
+    
     # start to processing the fast5 (multiread format)
     print("running process")
-    # run_multifast5(fast5_paths[0], 
-    #             test_df,
-    #             alignment_file,
-    #                 genome_ref,
-    #                 window,
-    #                 chrID,
-    #                 flank_size,
-    #                 trim_model,
-    #                 trim_signal,
-    #                 bandwidth,
-    #                 out_fn)
-    # exit()                
-    
-    
     from itertools import repeat
     #executor = concurrent.futures.ProcessPoolExecutor(mp.cpu_count()-1)
-    executor = concurrent.futures.ProcessPoolExecutor(32)
+    executor = concurrent.futures.ProcessPoolExecutor(63)
     pbar = tqdm(total = len(fast5_paths))
 
     futures = [executor.submit(run_multifast5, 
                                 f, 
-                                test_df,
+                                jwr_df,
                                 alignment_file,
                                 genome_ref,
                                 window,
@@ -215,6 +204,7 @@ def main():
     
     for future in as_completed(futures):   
         pbar.update(1)
+    
     pd.concat([x.result() for x in futures]).to_csv("error_summary.csv")
 
 
@@ -231,6 +221,7 @@ def write_err_msg(d, jwr, error_msg):
                     error_msg]],
         columns = ['id', 'chrID' ,'loc', 'JAQ', 'error_msg'])], ignore_index=True)
     return d
+
 # running a single process 
 def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile, 
                     window, chrID, flank_size, trim_model, trim_signal,
@@ -437,7 +428,7 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
             aligned_base[j] = candidate[trim_model + int((path[0,1] - 1)/UNIFORM_DWELL): trim_model+ int((path[-1,1] - 1)/UNIFORM_DWELL) + 1]
             #cum_path[j] = cum_matrix[path[:, 0], path[:, 1]]
 
-
+    
 ################################# segment median (pairwise version)
             # LR plot
             if PLOT and j == num_of_cand - 1:
@@ -464,13 +455,15 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
 
                     dist_seg_LR.append(sum(p_wise_LR[segment[is_dist_seg][:,0]]))
                 
+                
                 rel_to_ref_LR = np.exp(dist_seg_LR)/np.exp(dist_seg_LR[index_m])
                 post_prob = rel_to_ref_LR/sum(rel_to_ref_LR)
                 post_prob_prior = post_prob * (PRIOR_RATIO **candidate_preference)
                 post_prob_prior = post_prob_prior/sum(post_prob_prior)
-
-                fig = plt.figure(figsize=(20,5 * num_of_cand))
+                
+                fig = plt.figure(figsize=(30,5 * num_of_cand), dpi = 400)
                 subplot_index = 0
+            
                 for cand in range(num_of_cand):
                     junction_squiggle_median = junction_squiggle_median_list[cand]
                     segment, is_dist_seg = segment_list[cand]
@@ -482,11 +475,11 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
                     # frame subplot
                     subplot_index += 1
                     ax = fig.add_subplot(num_of_cand -1,1,subplot_index)
+                    #ax.margin
                     for i, seg in enumerate(segment):
-                        ax.axvspan(seg[0], seg[1]-1, -0.2,1.2, 
+                        ax.axvspan(seg[0]-0.5, seg[1]-1+0.5, -0.2,1.2, 
                             clip_on=True, alpha = 0.2 if is_dist_seg[i] else 0.1 , edgecolor = 'black', 
-                            lw = 0.2,  facecolor = 'red' if is_dist_seg[i] else '#E2D3CA')
-
+                            lw = 1,  facecolor = 'red' if is_dist_seg[i] else '#E2D3CA')
                     # # data-point wise LR
 
                     # LR_con = __log_likelihood(junction_squiggle_median, 
@@ -496,35 +489,41 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
 
                     #ax.plot(distinguish_points_idx,
                     #                np.repeat(max(junction_squiggle_median)+0.5,len(distinguish_points_idx)), 'o')
-                    ax.plot(matched_candidate_ref[:,0], 'r',linewidth=0.6, 
-                            label = "minimap2 candidate")
-                    ax.plot(matched_candidate_ref[:,0] + matched_candidate_ref[:,1], 'y--',linewidth=0.4, 
-                            label = "sd")
-                    ax.plot(matched_candidate_ref[:,0] - matched_candidate_ref[:,1], 'y--',linewidth=0.4)
-                    ax.plot(squiggle_match[cand][:,0], 'g',linewidth=0.6,
-                            label = "Candidate")
-                    ax.plot(junction_squiggle_median, 'b',linewidth=0.4, 
-                            label = "junction squiggle")
-                    ax.plot(junction_squiggle, 'b',linewidth=0.4, 
-                            label = "junction squiggle")
+                    ax.plot(matched_candidate_ref[:,0], '#ee9b00',linewidth=3, alpha = 0.8,
+                            label = "Candidate squiggle matching the initial mapping")
+                    ax.plot(matched_candidate_ref[:,0] + matched_candidate_ref[:,1], 'y--',linewidth=0.8, 
+                            label = "Position of +/- 1 standard deviation")
+                    ax.plot(matched_candidate_ref[:,0] - matched_candidate_ref[:,1], 'y--',linewidth=0.8)
+                    ax.plot(squiggle_match[cand][:,0], '#0a9396',linewidth=3, alpha = 0.5,
+                            label = "Candidate squiggle matching the true splice junction")
+                    ax.plot(squiggle_match[cand][:,0] + squiggle_match[cand][:,1], 'y--',linewidth=0.8)
+                    ax.plot(squiggle_match[cand][:,0] - squiggle_match[cand][:,1], 'y--',linewidth=0.8)
+                    
+                    mid_seg_pos = (segment[:,1] + segment[:,0]-1) /2
+                    ax.plot(mid_seg_pos,junction_squiggle_median[np.array([int(x) for x in mid_seg_pos])], 'r.',ms=8, 
+                            label = "Median of current measurements in segments")
+                    ax.plot(junction_squiggle, '#0096c7',linewidth=1, 
+                            label = "Junction squiggle")
                     
                     middle_pos = find_candidate_middle_pos(squiggle_match[index_m])
                     for i in range(len(aligned_base[index_m])):
                         ax.annotate(aligned_base[index_m][i],
-                            xy=(middle_pos[i], max(junction_squiggle) + 0.05), xycoords='data', ha='center')
+                            xy=(middle_pos[i], max(junction_squiggle) + 0.05), xycoords='data', ha='center', color = '#ee9b00')
                     middle_pos = find_candidate_middle_pos(squiggle_match[cand])
                     for i in range(len(aligned_base[cand])):
                         ax.annotate(aligned_base[cand][i],
-                            xy=(middle_pos[i], min(junction_squiggle) - 0.2), xycoords='data', ha='center')
-                    ax.legend(frameon=False, loc='best')
+                            xy=(middle_pos[i], min(junction_squiggle) - 0.2), xycoords='data', ha='center', color = '#0a9396')
+                    ax.legend(bbox_to_anchor=(1.01, 1), loc='upper left', fontsize = 10)
                     
-                    ax.set_title('Log LR: {:.2f}, average Log-Lik: {:.2f}, post probability: {:.3f}, candidate_preference: {}, post probability(seq prior ratio = 9): {:.3f} '.format(
-                        dist_seg_LR[cand], 
-                        np.mean(
-                            even_wise_log_likelihood(junction_squiggle, squiggle_match_list[cand], max_z=MAX_Z)),
-                        post_prob[cand], 
-                        candidate_preference[cand], 
-                        post_prob_prior[cand]), y=1.0, pad=-14)
+                    #figure title
+                    if False:
+                        ax.set_title('Log LR: {:.2f}, average Log-Lik: {:.2f}, post probability: {:.3f}, candidate_preference: {}, post probability(seq prior ratio = 9): {:.3f} '.format(
+                            dist_seg_LR[cand], 
+                            np.mean(
+                                even_wise_log_likelihood(junction_squiggle, squiggle_match_list[cand], max_z=MAX_Z)),
+                            post_prob[cand], 
+                            candidate_preference[cand], 
+                            post_prob_prior[cand]), y=1.0, pad=-14)
                 fig.suptitle('minimap2 candidate likelihood: {:.2f}, average Log-Lik: {:.2f}, post probability: {:.3f}, candidate_preference: {}, post probability(seq prior ratio = 9): {:.3f}'.format(
                         dist_seg_LR[index_m], 
                         np.mean(
@@ -533,77 +532,8 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
                         candidate_preference[index_m], 
                         post_prob_prior[index_m]))
 
+                fig.subplots_adjust(right=0.8)
                 fig.savefig("{}_median_pairwise.png".format(read.qname))
-
-                # f = open(output_file[:-4]+output_suffix+'.tsv', "a")
-                # fcntl.flock(f,fcntl.LOCK_EX)
-                # f.write('{}'.format(
-                #     row.id,
-                #     row.site_minimap,
-                #     row.site_NanoSplicer,
-                #     row.minimap,
-                #     row.NanoSplicer,
-                #     row.S_i,
-                #     row.junc_supported,
-                #     row.num_cand
-                #     row.candidates,
-                #     row.true_junction_match,
-                #     row.transID,
-                #     row.junc_id,
-                #     row.junc_map_cigar,
-                #     row.junc_map_q,
-
-                # )
-
-
-                #             row.junction[0],
-                #             row.junction[1],
-                #             ','.join([str(x)+','+str(y) for x,y in candidates_pos]),
-                #             score_output.index(min(score_output)), 
-                #             read.qname,
-                #             score_output,
-                #             len(path),
-                #             sum(out_of_sd),
-                #             score_trimmed,
-                #             score_trimmed2,
-                #             [sum(x) for x in out_of_sd_ind.values()],
-                #             score_trimmed_ref,
-                #             junc_id ))
-                # fcntl.flock(f,fcntl.LOCK_UN)
-                # f.close()    
-
-                    # middle_pos = find_candidate_middle_pos(squiggle_match[0])
-                    # for i in range(len(aligned_base[0])):
-                    #     axes[0].annotate(aligned_base[0][i],
-                    #         xy=(middle_pos[i], max(junction_squiggle_median) + 0.2), xycoords='data', ha='center')
-                    # middle_pos = find_candidate_middle_pos(squiggle_match[1])
-                    # for i in range(len(aligned_base[1])):
-                    #     axes[0].annotate(aligned_base[1][i],
-                    #         xy=(middle_pos[i], min(junction_squiggle_median) - 0.2), xycoords='data', ha='center')
-                                    
-                    # ax1 = axes[1]
-                    # ax2 = ax1.twinx()
-                    # # for j_i in range(num_of_cand):
-                    # #     ax1.plot(squiggle_match[j_i][:,0], 'r',linewidth=0.2)
-                    # # plt.savefig("{}_cum_LR_{}.png".format(output_prefix, read.qname))
-                    # # plt.close()
-
-                    # ax1.plot(squiggle_match[0][:,0], 'r',linewidth=0.4, 
-                    #         label = "minimap2 candidate")
-                    # ax1.plot(squiggle_match[1][:,0], 'g',linewidth=0.4, 
-                    #         label = "NanoSplicer candidate")
-
-                    # # # plot contribution of each data point in LR
-                    # if True:
-                    #     ax2.plot(LR_con, 
-                    #             color='#4b0082', linewidth=0.4, alpha=1, 
-                    #             dash_capstyle='round', label = 'LR contribution')
-                    #     ax1.set_xlabel('Index')
-                    #     ax1.set_ylabel('Candidate squiggle', color='g')
-                    #     ax2.set_ylabel('log likelihood ratio contribution', color='#4b0082')
-                    #     ax1.legend(frameon=False, loc='best')
-                    #     fig.savefig("{}_median_dtime8.png".format(read.qname))
-                    #     plt.close()
 
 ################################# segment median LR (pairwise version) LR contribution
             # LR plot
