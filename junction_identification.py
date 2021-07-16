@@ -130,7 +130,7 @@ def canonical_site_finder(aligned_seg, candidate_Interval, ref_FastaFile,
     if ts == '+':
         intron_start_candidate = [start - window + m.start() 
                                     for m in re.finditer("GT",donor_pattern)]
-        intron_end_candidate = [end - window + m.start() + 2
+        intron_end_candidate = [end - window + m.start()
                     for m in re.finditer("AG",acceptor_pattern)]
         if not intron_start_candidate or not intron_end_candidate:
             return []
@@ -141,7 +141,7 @@ def canonical_site_finder(aligned_seg, candidate_Interval, ref_FastaFile,
     elif ts == '-':
         intron_start_candidate = [start - window + m.start() 
                                     for m in re.finditer("CT",donor_pattern)]
-        intron_end_candidate = [end - window + m.start() + 2
+        intron_end_candidate = [end - window + m.start()
                     for m in re.finditer("AC",acceptor_pattern)]
         if not intron_start_candidate or not intron_end_candidate:
             return []
@@ -153,11 +153,11 @@ def canonical_site_finder(aligned_seg, candidate_Interval, ref_FastaFile,
         # no ts tag in the bam
         intron_start_candidate1 = [start - window + m.start() 
                                     for m in re.finditer("GT",donor_pattern)]
-        intron_end_candidate1 = [end - window + m.start() + 2
+        intron_end_candidate1 = [end - window + m.start()
                     for m in re.finditer("AG",acceptor_pattern)]
         intron_start_candidate2 = [start - window + m.start() 
                                     for m in re.finditer("CT",donor_pattern)]
-        intron_end_candidate2 = [end - window + m.start() + 2
+        intron_end_candidate2 = [end - window + m.start()
                     for m in re.finditer("AC",acceptor_pattern)]
 
         candidate_tuples = []
