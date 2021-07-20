@@ -203,7 +203,7 @@ class JWR_checker_param:
         
         # DEFAULT VALUE
         self.junc_cigar_win = 25
-        self.chrID, self.g_loc = None, None
+        self.chrID, self.g_loc = None, (None,None)
         self.threads = 32
 
         for opt, arg in opts:
