@@ -28,6 +28,12 @@ Update to the NanoSplicer_seg.py:
 import importlib
 import textwrap
 import pandas as pd
+import matplotlib 
+matplotlib.use('svg')
+new_rc_params = {'text.usetex': False,
+"svg.fonttype": 'none'
+}
+matplotlib.rcParams.update(new_rc_params)
 import matplotlib.pyplot as plt
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -533,7 +539,7 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
                         post_prob_prior[index_m]))
 
                 fig.subplots_adjust(right=0.8)
-                fig.savefig("{}_median_pairwise.png".format(read.qname))
+                fig.savefig("{}_median_pairwise.svg".format(read.qname), format = 'svg')
 
 ################################# segment median LR (pairwise version) LR contribution
             # LR plot
