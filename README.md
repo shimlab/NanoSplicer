@@ -145,7 +145,7 @@ The 'NanoSplicer.py' output a TSV file with 10 columns:
 
 ## Known issue
 1. There will be a performance warning when running `JWR_checker` and `JWR_subset`. **The warning can be ignored**. The warning comes when saving the data into HDF5 file. The problem is some python object can not be convert to c-type directly so the performance of the HDF5 is not optimal. 
-2. The progress bar in NanoSplicer is based on the number of fast5 files has been processed. If there is only 1 fast5 file (e.g. in the `example/fast5/`), the progress bar will always be 0% (0/1 completed) until the whole run finish. 
+2. The progress bar in `NanoSplicer.py` is based on the number of fast5 files has been processed. If there is only 1 fast5 file (e.g. in the `example/fast5/`), the progress bar will always be 0% (0/1 completed) until the whole run finish. 
 
 ## Contributing authors:
 Yupei You,
