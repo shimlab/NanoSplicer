@@ -29,7 +29,7 @@ class JWR_subset_param:
 
         # DEFAULT VALUE
         self.best_jaq, self.chrID, self.g_loc, \
-            self.output_csv = None, None, None, False
+            self.output_csv = 0.9, None, None, False
 
         for opt, arg in opts:
             if opt in ("-h", "--help"):
