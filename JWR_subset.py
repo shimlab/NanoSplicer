@@ -77,6 +77,7 @@ class JWR_subset_param:
 def main():
     param = JWR_subset_param()
     d = pd.read_hdf(param.input_h5, 'data')
+    original_total = len(d)
     
     if param.chrID:
         d = d[d.chrID == param.chrID]
@@ -90,6 +91,8 @@ def main():
 
     d.to_hdf(param.output_h5, 'data')
     
+    print('\n\nJWR_subset select {} out of {} JWRs\n\n'.format(len(d), original_total))
+
     if param.output_csv:
         d.to_csv(param.output_h5 + ".csv")
 
