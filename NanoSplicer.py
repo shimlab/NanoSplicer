@@ -74,7 +74,7 @@ def parse_arg():
             -i      .bam/.sam file (required)
             -f      path to fast5s (required)
             -r      Genome reference file (required)
-            -o      output filename <default: 'NanoSplicer_out'>
+            -o      output filename <default: 'NanoSplicer_out.tsv'>
         For developer:
             -T      Number of events trimmed from scrappie model <default: 2>
             -t      Number of bases trimmed from raw signam, the raw samples are
@@ -95,7 +95,7 @@ def parse_arg():
                     "trim_signal=","dtw_adj","bandwidth=",
                     "flank_size=", "window=", "config_file="])
     except getopt.GetoptError:
-        helper.err_msg("Error: Invalid argument inpurt") 
+        helper.err_msg("Error: Invalid argument input") 
         print_help()
         sys.exit(1)
 
@@ -139,7 +139,7 @@ def parse_arg():
     
 
     if not args:
-        helper.err_msg("Error: Invalid argument inpurt")   
+        helper.err_msg("Error: Invalid argument input")   
         print_help()# print help doc when no command line args provided
         sys.exit(0)
     pd_file = args[0]
@@ -180,19 +180,40 @@ def main():
     chrID = CHROMOSOME_NAME
     if not out_fn:
         out_fn  = OUTPUT_FILENAME
+
+    # check file exist
+    if os.path.isfile(out_fn):
+        helper.err_msg("File '{}' exists, please re-try by specify another output filename or remove the existing file.".format(out_fn)) 
+        sys.exit(1)
+    
+    else:
+        f = open(out_fn, "w")
+        f.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
+                                            'read_id',
+                                            'reference_name',
+                                            'inital_junction',
+                                            'JAQ',
+                                            'candidates',
+                                            'candidate_preference',
+                                            'SIQ',
+                                            'prob_uniform_prior',
+                                            'prob_seq_pattern_prior',
+                                            'best_prob'
+                                             ))
+    f.close()
     # import data
     jwr_df = pd.read_hdf(pd_file, key = 'data')
     
     # get fast5 filenames recursively
     fast5_paths = Path(fast5_dir).rglob('*.fast5') # iterator
     fast5_paths = list(fast5_paths)
-    
+
     
     # start to processing the fast5 (multiread format)
     print("running process")
     from itertools import repeat
     #executor = concurrent.futures.ProcessPoolExecutor(mp.cpu_count()-1)
-    executor = concurrent.futures.ProcessPoolExecutor(63)
+    executor = concurrent.futures.ProcessPoolExecutor(mp.cpu_count()-1)
     pbar = tqdm(total = len(fast5_paths))
 
     futures = [executor.submit(run_multifast5, 
@@ -250,7 +271,7 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
         trim_models:    # of bases to be trimmed on candidate squiggles
         trim_signals:   # of bases to be trimmed on juntion squiggles
         bandwidth:      bandwidth for dtw
-        output_file:    outbupt file name (.csv)    
+        output_file:    outbupt file name (.tsv)    
     Output:
         on each linein the output_file write NanoSplice output in the following columns
 
@@ -744,24 +765,40 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
                 segment_Si = [np.mean(x) for x in even_logL_list]
                 worst_even_logL_list = [sorted(x)[0] for x in even_logL_list]
 
-                f = open(output_file+'.tsv', "a")
+                f = open(output_file, "a")
                 #fcntl.flock(f,fcntl.LOCK_EX)
-                f.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
+                # f.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
+                #     jwr.id,
+                #     str(jwr.loc),
+                #     jwr.JAQ,
+                #     ','.join([str(x)+','+str(y) for x,y in candidate_tuples]),
+                #     index_m,
+                #     ','.join([str(x) for x in candidate_preference]),
+                #     np.max(segment_Si),
+                #     #','.join([str(x) for x in segment_Si]),
+                #     ','.join([str(x) for x in dist_seg_logLR]),
+                #     ','.join([str(x) for x in post_prob]),
+                #     ','.join([str(x) for x in post_prob_prior]),
+                #     np.max(post_prob_prior)
+                #     ))
+                #     # fcntl.flock(f,fcntl.LOCK_UN)
+                # f.close()
+                
+                f.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
                     jwr.id,
+                    jwr.chrID,
                     str(jwr.loc),
-                    jwr.JAQ,
-                    ','.join([str(x)+','+str(y) for x,y in candidate_tuples]),
-                    index_m,
+                    '{:.3f}'.format(jwr.JAQ),
+                    ','.join(['('+str(x)+','+str(y)+')' for x,y in candidate_tuples]),
                     ','.join([str(x) for x in candidate_preference]),
-                    np.max(segment_Si),
-                    #','.join([str(x) for x in segment_Si]),
-                    ','.join([str(x) for x in dist_seg_logLR]),
-                    ','.join([str(x) for x in post_prob]),
-                    ','.join([str(x) for x in post_prob_prior]),
-                    np.max(post_prob_prior)
+                    '{:.4f}'.format(np.max(segment_Si)),
+                    ','.join(['{:.4f}'.format(x) for x in post_prob]),
+                    ','.join(['{:.4f}'.format(x) for x in post_prob_prior]),
+                    '{:.4f}'.format(np.max(post_prob_prior))
                     ))
                     # fcntl.flock(f,fcntl.LOCK_UN)
                 f.close()
+    
     return failed_jwr
 
 def get_gaps_in_read(AlignedSegment):

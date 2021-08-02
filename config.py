@@ -34,5 +34,5 @@ PRIOR_RATIO = 9
 PLOT = False
 PLOT_LR = False
 RESULT = True
-OUTPUT_FILENAME = 'NanoSplicer_out'
+OUTPUT_FILENAME = 'NanoSplicer_out.tsv'
 

@@ -195,7 +195,8 @@ class JWR_checker_param:
                          "window=",
                          "chrID=",
                          "genome-loc=",
-                         "--threads"])
+                         "threads=",
+                         "output_csv"])
         except getopt.GetoptError:
             helper.err_msg("ERROR:Invalid input.")
             self.print_help()
@@ -205,6 +206,7 @@ class JWR_checker_param:
         self.junc_cigar_win = 25
         self.chrID, self.g_loc = None, (None,None)
         self.threads = 32
+        self.output_csv = False
 
         for opt, arg in opts:
             if opt in ("-h", "--help"):
@@ -222,6 +224,8 @@ class JWR_checker_param:
                     sys.exit(1)
             elif opt == "--threads":
                 self.threads = int(arg)
+            elif opt == "--output_csv":
+                self.output_csv = True
         
         if len(args) <2:   
             helper.err_msg("ERROR:Invalid input.")
@@ -234,7 +238,7 @@ class JWR_checker_param:
         '''
         Finding junctions within reads (JWRs) from a spliced mapping result (BAM). 
 
-        Usage: python {} [OPTIONS] <BAM file> <output file>
+        Usage: python {} [OPTIONS] <BAM file> <output hdf5 file>
         
         Options:
             -h/--help        Print this help text
@@ -246,6 +250,8 @@ class JWR_checker_param:
                                 specified. e.g. --genome-loc=0-10000. Entire 
                                 chromosome will be searched if not specified
             --threads        Number of threads used <default: 32>.
+            --output_csv     With this option, a csv file will be output with
+                                 the hdf5 file
         '''.format(sys.argv[0])
 
         print(textwrap.dedent(help_message))
@@ -307,7 +313,10 @@ def main():
     d = pd.concat([x.result() for x in futures])
 
     d.to_hdf(param.outfile, 'data')
-    d.to_csv(param.outfile + ".csv")
+    
+    # output csv file if required
+    if param.output_csv:
+        d.to_csv(param.outfile + ".csv")
 
 if __name__ == "__main__":
     main()
