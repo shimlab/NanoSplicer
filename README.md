@@ -139,8 +139,8 @@ The 'NanoSplicer.py' output a TSV file with 10 columns:
 
 ###  Update coming soon
 1. New option to output a bed file which contains the identification from NanoSplicer (We will keep the original NanoSplicer table which contains the information for all the candidates)
-2. Accept user-previded .bed file to guide the candidate selection
-3. Option to include the most support splice junction nearby as on of the candidates.
+2. Accept user-previded BED file to guide the candidate selection
+3. Option to include the mostly supported splice junction nearby as on of the candidates.
 4. Visulisation module: ploting the alignment between junction squiggle and all the candidate squiggle.
 
 ## Known issue
