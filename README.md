@@ -5,6 +5,8 @@
 Oxford Nanopore sequencing, Transcriptomics
 
 # Overview
+The program contains 3 modules and need to be run one by one to get the final result. Some example input files can be found at `example/` to run all of the module below. Example code is also available at `example/script.sh`.
+
 `JWR_checker.py`: Find junctions within reads (JWRs) from a spliced mapping result (BAM).
 
 `JWR_subset.py`: Subset the result from the JWR_checker. Based on our performance assessment, JWRs with good junction alignment quality have usually an accurate mapping to the splice junctions. A subset of JWR can be obtained by only select JWRs with low JAQ. By default, `JWR_subset.py` selects the all JWRs with junction alignment quality less than 0.9.
@@ -49,7 +51,7 @@ git clone https://github.com/shimlab/NanoSplicer.git
 ```
 
 # Modules
-Some example input files can be found at `example/`. Example code is available at `example/script.sh`.
+
 
 ## JWR_checker.py
  Find junctions within reads (JWRs) from a spliced mapping result (BAM). For each JWR, `JWR_checker` reports the junction alignment quality for the initial mapping. 
