@@ -76,7 +76,7 @@ Options:
 ```
 ### Example: find all JWR from reads mapped to chromosome 1 (chr1) 5296679-5297165
 ``` 
-python3 JWR_checker.py –-chrID=chr1 –-genome-loc=5296679-5297165  --output_csv example.hd5
+python3 JWR_checker.py –-chrID=chr1 –-genome-loc=5296679-5297165  --output_csv example.h5
 ```
 ## JWR_subset.py
 Subset the result from the JWR_checker. Based on our performance assessment, JWRs with good junction alignment quality have usually an accurate mapping to the splice junctions. A subset of JWR can be obtained by only select JWRs with low JAQ. By default, JWR_subset.py selects the all JWRs with junction alignment quality less than 0.9. **Note:** Currently `JWR_subset` only takes the HDF5 file from `JWR_checker` as input and return subset result back in HDF5 format. A CSV format table can also be output with `--output_csv`.
@@ -95,7 +95,7 @@ Options:
 ```
 ### Example subset the JWR to retain only the JWR with junction alignment quality <=0.8 at specifiy genome location
 ``` 
-python3 JWR_checker.py –-chrID=chr1 –-genome-loc=5296679-5297165 --best_JAQ=0.8  --output_csv input.hd5 output.h5
+python3 JWR_checker.py –-chrID=chr1 –-genome-loc=5296679-5297165 --best_JAQ=0.8  --output_csv input.h5 output.h5
 ```
 
 ## NanoSplicer.py
