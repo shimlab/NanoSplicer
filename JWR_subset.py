@@ -63,7 +63,7 @@ class JWR_subset_param:
         Options:
             -h/--help       Print this help text
             --bset_JAQ      A number from 0-1, JWRs with junction alignment quality (JAQ) above
-                             the threshold will not be included <defalt: no filter>
+                             the threshold will not be included <defalt: 0.9>
             --chrID         Target on specific chromosome, chrID should match
                                 the chromosome name in the BAM
             --genome-loc    Target on specific genome region, chrID should be 
