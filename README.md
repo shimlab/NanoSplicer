@@ -49,6 +49,7 @@ git clone https://github.com/shimlab/NanoSplicer.git
 ```
 
 # Modules
+Some example input files can be found at `example/`. Example code is available at `example/script.sh`.
 
 ## JWR_checker.py
  Find junctions within reads (JWRs) from a spliced mapping result (BAM). For each JWR, `JWR_checker` reports the junction alignment quality for the initial mapping. 
@@ -71,7 +72,7 @@ Options:
     --threads        Number of threads used <default: 32>.
     --output_csv     With this option, a csv file will be output with the hdf5 file
 ```
-### Example
+### Example: find all JWR from reads mapped to chromosome 1 (chr1) 5296679-5297165
 ``` 
 python3 JWR_checker.py –-chrID=chr1 –-genome-loc=5296679-5297165  --output_csv example.hd5
 ```
@@ -82,7 +83,7 @@ Usage: python JWR_subset.py [OPTIONS] <input file: hdf5 output from JWR_checker>
 Options:
     -h/--help       Print this help text
     --bset_JAQ      A number from 0-1, JWRs with junction alignment quality (JAQ) above
-                     the threshold will not be included <defalt: no filter>
+                     the threshold will not be included <defalt: 0.9>
     --chrID         Target on specific chromosome, chrID should match
                         the chromosome name in the BAM
     --genome-loc    Target on specific genome region, chrID should be
@@ -90,7 +91,7 @@ Options:
     --output_csv    With this option, a csv file will be output with
                          the hdf5 file
 ```
-### Example
+### Example subset the JWR to retain only the JWR with junction alignment quality <=0.8 at specifiy genome location
 ``` 
 python3 JWR_checker.py –-chrID=chr1 –-genome-loc=5296679-5297165 --best_JAQ=0.8  --output_csv input.hd5 output.h5
 ```
@@ -114,7 +115,7 @@ For developer only:
     -c      Config filename <default: 'config'>
 ```
 
-### Example
+### Example: 
 ``` 
 python3 NanoSplicer.py -i example.bam -f /data/fast5s/ -r ref.fa input.h5
 ```
