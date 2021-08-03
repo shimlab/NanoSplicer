@@ -339,14 +339,17 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
         # trim signal (use fewer base)
         motif_start += trim_signal
         motif_end -= trim_signal
-            
+
+
+        tombo_results, tombo_start_clip, tombo_end_clip, std_ref, sd_of_median= \
+                tombo_squiggle_to_basecalls(multi_fast5, read)  
         # tombo resquiggle
-        try:
-            tombo_results, tombo_start_clip, tombo_end_clip, std_ref, sd_of_median= \
-                tombo_squiggle_to_basecalls(multi_fast5, read)
-        except:
-            failed_jwr = write_err_msg(failed_jwr, jwr, 'Fail to resquiggle (Tombo).')
-            continue
+        # try:
+        #     tombo_results, tombo_start_clip, tombo_end_clip, std_ref, sd_of_median= \
+        #         tombo_squiggle_to_basecalls(multi_fast5, read)
+        # except:
+        #     failed_jwr = write_err_msg(failed_jwr, jwr, 'Fail to resquiggle (Tombo).')
+        #     continue
         read_length = len(tombo_results.genome_seq) \
                                 + tombo_start_clip + tombo_end_clip
         #normalised_raw_signal = tombo_results.raw_signal/1.4826 # don't need to normalise base on sd
@@ -831,10 +834,14 @@ def tombo_squiggle_to_basecalls(multi_fast5, AlignedSegment):
     else:
         read_seq = AlignedSegment.seq
 
+    if AlignedSegment.query_qualities:
+        mean_q_score = AlignedSegment.query_qualities
+    else:
+        mean_q_score = None
     
     seq_data = tombo_helper.sequenceData(seq=read_seq, 
                                          id=AlignedSegment.qname, 
-                                         mean_q_score=np.mean(AlignedSegment.query_qualities))
+                                         mean_q_score=mean_q_score)
     # prep tombo objects
     std_ref = tombo_stats.TomboModel(seq_samp_type=seq_samp_type)
     start_clip = std_ref.central_pos
