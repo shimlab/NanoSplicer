@@ -124,17 +124,17 @@ python3 NanoSplicer.py -i example.bam -f /data/fast5s/ -r ref.fa input.h5
 **Note:** The index file match the input BAM file need to be present in the same folder of the BAM file
 
 ## Output
-The 'NanoSplicer.py' output a TSV file with 10 columns:
+The 'NanoSplicer.py' output is a TSV file with 10 columns:
 
-1. **read_id**: the id of the read that the given JWR coming from
+1. **read_id**: the Nanopore id of the read that the given JWR comes from
 2. **reference_name**: the mapped reference name  of the read that the given JWR coming from
 3. **inital_junction**: initial mapped splice junction
-4. **JAQ**: Juncion alignment quality
+4. **JAQ**: Junction alignment quality
 5. **candidates**: all candidate splice junctions 
 6. **candidate_preference**: candidate preference, which is based on the sequence pattern near the splice junction, can take value 0,1,2,3. Larger value means prefered.
-7. **SIQ**: Squiggle information quality The squiggle usually bad if it is lower than -0.4.
-8. **prob_uniform_prior**: probability for each candidate use uniform prior  
-9. **prob_seq_pattern_prior**: probability for each candidate use sequence pattern prior (based on the candidate preference in column 6)
+7. **SIQ**: Squiggle information quality. The squiggle is usually of poor quality if the SIQ is lower than -0.4.
+8. **prob_uniform_prior**: probability for each candidate using a uniform prior  
+9. **prob_seq_pattern_prior**: probability for each candidate using the sequence pattern prior (based on the candidate preference in column 6)
 10. **best_prob**: value of the best probability in column 9
 
 ###  Updates coming soon
