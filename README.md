@@ -1,5 +1,5 @@
 # NanoSplicer
- A program for accurately identify splice juncitons using Nanopore data (both basecalls and squiggles).
+ A program for accurately identifying splice junctions using Nanopore data (both basecalls and squiggles).
 
 ## Keywords:
 Oxford Nanopore sequencing, Transcriptomics
