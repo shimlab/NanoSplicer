@@ -2,7 +2,7 @@
  A program for accurately identifying splice junctions using Oxford Nanopore sequencing data (both basecalls and squiggles).
 
 ## Keywords:
-Oxford Nanopore sequencing, Transcriptomics
+Oxford Nanopore sequencing, Transcriptomics, Splice junctions
 
 # Overview
 The program contains 3 modules and needs to be run one by one to get the final result. Some example input files can be found at `example/` to run all of the module below. Example code is also available at `example/script.sh`.
@@ -154,6 +154,6 @@ Heejung Shim*
 
 ## Author affiliations:
 School of Mathematics and Statistics and Melbourne Integrative Genomics, University of Melbourne, Melbourne, Australia
-Anatomy and Neuroscience, School of Biomedical Sciences, University of Melbourne, Melbourne, Australia
+Deptartment of Anatomy and Physiology, School of Biomedical Sciences, University of Melbourne, Melbourne, Australia
 School of Mathematics and Statistics and Melbourne Integrative Genomics, University of Melbourne, Melbourne, Australia
 
