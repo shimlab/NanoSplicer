@@ -137,9 +137,9 @@ The 'NanoSplicer.py' output a TSV file with 10 columns:
 9. **prob_seq_pattern_prior**: probability for each candidate use sequence pattern prior (based on the candidate preference in column 6)
 10. **best_prob**: value of the best probability in column 9
 
-###  Update coming soon
-1. Option to output a bed file that contains the junctions identified by NanoSplicer (We will retain the existing NanoSplicer output table that contains information on all the candidates).
-2. Accept a user-provided BED file to guide candidate selection.
+###  Updates coming soon
+1. Option to output a bed file that contains the junctions identified by NanoSplicer (we will retain the existing NanoSplicer output table that contains information on all the candidates).
+2. Option to accept a user-provided BED file to guide candidate selection.
 3. Option to include the most supported nearby splice junction as one of the candidates.
 4. Visulisation module: ploting the alignment between the junction squiggle and the candidate squiggle(s).
 
