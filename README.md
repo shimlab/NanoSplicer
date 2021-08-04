@@ -1,11 +1,11 @@
 # NanoSplicer
- A program for accurately identifying splice junctions using Nanopore data (both basecalls and squiggles).
+ A program for accurately identifying splice junctions using Oxford Nanopore sequencing data (both basecalls and squiggles).
 
 ## Keywords:
 Oxford Nanopore sequencing, Transcriptomics
 
 # Overview
-The program contains 3 modules and need to be run one by one to get the final result. Some example input files can be found at `example/` to run all of the module below. Example code is also available at `example/script.sh`.
+The program contains 3 modules and needs to be run one by one to get the final result. Some example input files can be found at `example/` to run all of the module below. Example code is also available at `example/script.sh`.
 
 `JWR_checker.py`: Find junctions within reads (JWRs) from a spliced mapping result (BAM).
 
@@ -56,7 +56,7 @@ git clone https://github.com/shimlab/NanoSplicer.git
 ## JWR_checker.py
  Find junctions within reads (JWRs) from a spliced mapping result (BAM). For each JWR, `JWR_checker` reports the junction alignment quality for the initial mapping. 
  
- **Note:** Currently `JWR_checker` output a table in HDF5 format, which allows easier read-in in the following steps. A CSV format table can also be output with `--output_csv`, which is easier to read by users.  The downstream script `JWR_subset.py` and `NanoSplicer.py` only accept the HDF5 as the input.
+ **Note:** Currently `JWR_checker` outputs a table in HDF5 format, which allows easier read-in in the following steps. A CSV format table can also be output with `--output_csv`, which is easier for users to read.  The downstream script `JWR_subset.py` and `NanoSplicer.py` only accepts the HDF5 as the input.
 ```
 Finding junctions within reads (JWRs) from a spliced mapping result (BAM).
 
@@ -64,9 +64,9 @@ Usage: python JWR_checker.py [OPTIONS] <BAM file> <output hdf5 file>
 
 Options:
     -h/--help        Print this help text
-    -w/--window      Candidate searching window size <default: 25>
+    -w/--window      Candidate searching window size (nt) <default: 25>
     --chrID          Target on specific chromosome, chrID should match
-                        the chromosome name in the BAM. All chromosome
+                        the chromosome name in the BAM. All chromosomes
                         in the BAM will be searched if not specified
     --genome-loc     Target on specific genome region, chrID should be
                         specified. e.g. --genome-loc=0-10000. Entire
@@ -79,13 +79,13 @@ Options:
 python3 JWR_checker.py –-chrID=chr1 –-genome-loc=5296679-5297165  --output_csv input.bam example.h5
 ```
 ## JWR_subset.py
-Subset the result from the JWR_checker. Based on our performance assessment, JWRs with good junction alignment quality have usually an accurate mapping to the splice junctions. A subset of JWR can be obtained by only select JWRs with low JAQ. By default, JWR_subset.py selects the all JWRs with junction alignment quality less than 0.9. **Note:** Currently `JWR_subset` only takes the HDF5 file from `JWR_checker` as input and return subset result back in HDF5 format. A CSV format table can also be output with `--output_csv`.
+Subset the result from the JWR_checker. Based on our performance assessment, JWRs with good junction alignment quality usually have an accurate mapping to the splice junction. A subset of JWRs can be obtained by only selecting JWRs with a low JAQ. By default, JWR_subset.py selects the all JWRs with junction alignment quality less than 0.9. **Note:** Currently `JWR_subset` only takes the HDF5 file from `JWR_checker` as input and returns the filtered subset back in HDF5 format. A table in CSV format can also be output with `--output_csv`.
 ```
 Usage: python JWR_subset.py [OPTIONS] <input file: hdf5 output from JWR_checker> <output file: hdf5>
 Options:
     -h/--help       Print this help text
-    --bset_JAQ      A number from 0-1, JWRs with junction alignment quality (JAQ) above
-                     the threshold will not be included <defalt: 0.9>
+    --bset_JAQ      A number from 0-1, JWRs with a junction alignment quality (JAQ) above
+                     the threshold will not be included <default: 0.9>
     --chrID         Target on specific chromosome, chrID should match
                         the chromosome name in the BAM
     --genome-loc    Target on specific genome region, chrID should be
