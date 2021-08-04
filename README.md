@@ -138,14 +138,14 @@ The 'NanoSplicer.py' output a TSV file with 10 columns:
 10. **best_prob**: value of the best probability in column 9
 
 ###  Update coming soon
-1. New option to output a bed file which contains the identification from NanoSplicer (We will keep the original NanoSplicer table which contains the information for all the candidates)
-2. Accept user-previded BED file to guide the candidate selection
-3. Option to include the mostly supported splice junction nearby as on of the candidates.
-4. Visulisation module: ploting the alignment between junction squiggle and all the candidate squiggle.
+1. Option to output a bed file that contains the junctions identified by NanoSplicer (We will retain the existing NanoSplicer output table that contains information on all the candidates).
+2. Accept a user-provided BED file to guide candidate selection.
+3. Option to include the most supported nearby splice junction as one of the candidates.
+4. Visulisation module: ploting the alignment between the junction squiggle and the candidate squiggle(s).
 
-## Known issue
-1. There will be a performance warning when running `JWR_checker` and `JWR_subset`. **The warning can be ignored**. The warning comes when saving the data into HDF5 file. The problem is some python object can not be convert to c-type directly so the performance of the HDF5 is not optimal. 
-2. The progress bar in `NanoSplicer.py` is based on the number of fast5 files has been processed. If there is only 1 fast5 file (e.g. in the `example/fast5/`), the progress bar will always be 0% (0/1 completed) until the whole run finish. 
+## Known issues
+1. There will be a performance warning when running `JWR_checker` and `JWR_subset`. **The warning can be ignored**. The warning is triggered when data is saved into the HDF5 file. It relates to python objects that can not be directly converted to c-type, causing non-optimal performance of the HDF5 file. 
+2. The progress bar in `NanoSplicer.py` is based on the number of fast5 files that have been processed. If there is only 1 fast5 file being processed (e.g. in `example/fast5/`), the progress bar will be at 0% (0/1 completed) until the run has finished. 
 
 ## Contributing authors:
 Yupei You,
