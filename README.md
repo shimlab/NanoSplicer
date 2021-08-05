@@ -126,7 +126,7 @@ For developer only:
 ``` 
 python3 NanoSplicer.py -i example.bam -f /data/fast5s/ -r ref.fa input.h5
 ```
-**Note:** The BAM file needs to be indexed (i.e. a `.bai` file needs to be present in the same folder as the BAM file). If not, it can be done by `samtools` with command: `samtools index <BAM filename>`.
+**Note:** The BAM file needs to be indexed (i.e. a `.bai` file needs to be present in the same folder as the BAM file). A .bai file can be generated with `samtools` using the command: `samtools index <BAM filename>`.
 
 ## Output
 The 'NanoSplicer.py' output is a TSV file with 10 columns:
