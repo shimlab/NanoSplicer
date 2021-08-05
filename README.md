@@ -5,18 +5,18 @@
 Oxford Nanopore sequencing, Transcriptomics, Splice junctions
 
 # Overview
-The program contains 3 modules and needs to be run one by one to get the final result. Some example input files can be found at `example/` to run all of the module below. Example code is also available at `example/script.sh`.
+The program contains 3 modules which need to be run in order to get the final result. Some example input files can be found at `example/` to run all of the modules below. Example code is also available at `example/script.sh`.
 
 `JWR_checker.py`: Find junctions within reads (JWRs) from a spliced mapping result (BAM).
 
-`JWR_subset.py`: Subset the result from the JWR_checker. Based on our performance assessment, JWRs with good junction alignment quality have usually an accurate mapping to the splice junctions. A subset of JWR can be obtained by only select JWRs with low JAQ. By default, `JWR_subset.py` selects the all JWRs with junction alignment quality less than 0.9.
+`JWR_subset.py`: Subset the result from JWR_checker. Based on our performance assessment, JWRs with high junction alignment quality (JAQ) are usually accurately mapped to their respective splice junctions. This module filters JWRs based on their JAQ, allowing selection of JWRs with lower JAQ that will most benefit from anlaysis with the NanoSplicer module. By default, `JWR_subset.py` selects JWRs with a junction alignment quality of less than 0.9.
 
-`NanoSplicer.py`: Run the identifications on the `JWR_checker.py` (or `JWR_subset.py` if applied) output. 
+`NanoSplicer.py`: Perform splice junction identification on the `JWR_checker.py` (or `JWR_subset.py` if applied) output. 
 
 <img src="img/NanoSplicer_modules.png" width="700">
 
 # Requirements
-NanoSplicer has been currently test on python 3.6 and 3.7. Everything should work for python3.X. 
+NanoSplicer has been tested on python 3.6 and 3.7. Everything should work for python3.X. 
 
 ## Package Dependency
 For `JWR_checker.py` and `JWR_subset.py`:
@@ -36,8 +36,8 @@ Additional requirements for `NanoSplicer`:
 * `skimage`
 
 ## Container access
-If there is any problem install the dependency above, the alternative way of setting up the environment is available via container. The 
-required for running NanoSplicer has been packaged in container and can be accessed using `singularity`, which is supported by most High-performance computer:
+If there are any problems installing the dependencies above, an alternative way of setting up the environment is available via container. The dependencies
+required for running NanoSplicer have been packaged into a container and can be accessed using `singularity`, which is supported by most high-performance computing environments:
 
 ```
 singularity pull NanoSplicer_container.sif docker://youyupei/nanosplicer:v1
