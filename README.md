@@ -1,11 +1,13 @@
 # NanoSplicer
- A program for accurately identifying splice junctions using Oxford Nanopore sequencing data (both basecalls and squiggles).
+ A program for accurately identifying splice junctions using Oxford Nanopore sequencing data.
 
 ## Keywords:
 Oxford Nanopore sequencing, Transcriptomics, Splice junctions
 
 # Overview
-The program contains 3 modules `JWR_checker.py`, `JWR_subset.py` and `NanoSplicer.py`, which need to be run in order to get the final result. The first and third module are required. `JWR_subset.py` is optional but recommended and will significantly decrease the run time of `NanoSplicer.py`.
+NanoSplicer utilises the raw ouput from nanopore sequencing (measures of electrical current commonly known as squiggles) to improve the identification of splice junctions. Instead of identifying splice junctions by mapping basecalled reads, nanosplicer compares the squiggle from a read with the predicted squiggles of potential splice junctions to identify the best match and likely junction. Mapped nanopore reads are also required to identify the presence of splice junctions for downstream NanoSplicer analysis.     
+
+The program contains 3 modules `JWR_checker.py`, `JWR_subset.py` and `NanoSplicer.py`, which need to be run in order to get the final result. The first and third modules are required. `JWR_subset.py` is optional but recommended and will significantly decrease the run time of `NanoSplicer.py`.
 Some example input files can be found at `example/` to run all of the modules below. Example code is also available at `example/script.sh`.
 
 `JWR_checker.py`: Find junctions within reads (JWRs) from a spliced mapping result (BAM).
