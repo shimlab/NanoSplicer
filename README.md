@@ -36,13 +36,13 @@ Additional requirements for `NanoSplicer`:
 * `skimage`
 
 ## Container access
-If there are any problems installing the dependencies above, an alternative way of setting up the environment is available via container. The dependencies
+If there are any problems installing the dependencies above, an alternative way of setting up the environment is available via a container. The dependencies
 required for running NanoSplicer have been packaged into a container and can be accessed using `singularity`, which is supported by most high-performance computing environments:
 
 ```
 singularity pull NanoSplicer_container.sif docker://youyupei/nanosplicer:v1
 ```
-**For poeple not familiar with container**: You can run linux command within the container by using `singularity shell` or `singularity exec`. These command autimatically bind your home directory to the home directory inside the container, which means everything under `~/` will be accessible without extra step (including the sub-directory). If your data are save in a different directory, you'll need to bind the directory with `-B <local path>:<path in container>` when running `singularity shell` or `singularity exec`. For example, your data are in `/data`, you need to add `-B /data:/folder_in_container`, everything in `/data` can then be accessible in `/folder_in_container`. You may use the same name for convenience (e.g. `-B /data:/data`). More formal introduction can be found at https://sylabs.io/singularity/
+**For people not familiar with containers**: You can run linux commands within the container by using `singularity shell` or `singularity exec`. These commands automatically bind your home directory to the home directory inside the container, which means everything under `~/` (including the sub-directories) will be accessible without extra steps. If your data are saved in a different directory, you'll need to bind the directory with `-B <local path>:<path in container>` when running `singularity shell` or `singularity exec`. For example, if your data are in `/data`, you need to add `-B /data:/folder_in_container`. Everything in `/data` is then accessible in `/folder_in_container`. You may use the same name for convenience (e.g. `-B /data:/data`). A more formal introduction to singularity can be found at https://sylabs.io/singularity/
 
 # Install
 
