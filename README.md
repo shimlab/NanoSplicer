@@ -5,7 +5,8 @@
 Oxford Nanopore sequencing, Transcriptomics, Splice junctions
 
 # Overview
-The program contains 3 modules `JWR_checker.py`, `JWR_subset.py` and `NanoSplicer.py` which need to be run in order to get the final result. The first and third module are required. `JWR_subset.py` is optional but recommended and will significantly decrease the run time of `NanoSplicer.py`.Some example input files can be found at `example/` to run all of the modules below. Example code is also available at `example/script.sh`.
+The program contains 3 modules `JWR_checker.py`, `JWR_subset.py` and `NanoSplicer.py`, which need to be run in order to get the final result. The first and third module are required. `JWR_subset.py` is optional but recommended and will significantly decrease the run time of `NanoSplicer.py`.
+Some example input files can be found at `example/` to run all of the modules below. Example code is also available at `example/script.sh`.
 
 `JWR_checker.py`: Find junctions within reads (JWRs) from a spliced mapping result (BAM).
 
