@@ -5,7 +5,7 @@
 Oxford Nanopore sequencing, Transcriptomics, Splice junctions
 
 # Overview
-The program contains 3 modules which need to be run in order to get the final result. Some example input files can be found at `example/` to run all of the modules below. Example code is also available at `example/script.sh`.
+The program contains 3 modules `JWR_checker.py`, `JWR_subset.py` and `NanoSplicer.py` which need to be run in order to get the final result. The first and third module are required. `JWR_subset.py` is optional but recommended and will significantly decrease the run time of `NanoSplicer.py`.Some example input files can be found at `example/` to run all of the modules below. Example code is also available at `example/script.sh`.
 
 `JWR_checker.py`: Find junctions within reads (JWRs) from a spliced mapping result (BAM).
 
@@ -93,13 +93,15 @@ Options:
     --output_csv    With this option, a csv file will be output along
                          with the hdf5 file
 ```
-### Example: subset the JWRs at a specified genomic location to retain only those with a junction alignment quality <=0.8
+### Example: subset the JWRs at a specified genomic location to retain only those with a JAQ <=0.8
 ``` 
 python3 JWR_checker.py –-chrID=chr1 –-genome-loc=5296679-5297165 --best_JAQ=0.8  --output_csv input.h5 output.h5
 ```
 
 ## NanoSplicer.py
-Run the identifications on the JWR_checker.py (or JWR_subset.py if applied) output. Note that only the HDF5 format input is accepted.
+Perform splice junction identification on the JWR_checker.py (or JWR_subset.py if applied) HDF5 output.
+Requires path to reads in fast5 (squiggle) format and a matched mapped .bam/.sam file for these reads. This is the same .bam file required for input into 
+`JWR_checker`.
 ```
 Usage: python NanoSplicer.py [OPTIONS] <JWR_checker/JWR_subset hdf5 file>
 Options:
@@ -109,9 +111,9 @@ Options:
     -o      output filename <default: 'NanoSplicer_out'>
 For developer only:
     -T      Number of events trimmed from scrappie model <default: 2>
-    -t      Number of bases trimmed from raw signam, the raw samples are
-                match to basecalled bases by tombo <default :6>
-    -F      Flanking sequence size in each side of candidate searching
+    -t      Number of bases trimmed from raw signal, the raw samples are
+                matched to basecalled bases by tombo <default :6>
+    -F      Flanking sequence size on each side of candidate searching
                 window <default: 20>
     -w      Candidate searching window size <default: 10>
     -c      Config filename <default: 'config'>
@@ -121,20 +123,20 @@ For developer only:
 ``` 
 python3 NanoSplicer.py -i example.bam -f /data/fast5s/ -r ref.fa input.h5
 ```
-**Note:** The index file match the input BAM file need to be present in the same folder of the BAM file
+**Note:** The index file matching the input BAM file needs to be present in the same folder as the BAM file
 
 ## Output
 The 'NanoSplicer.py' output is a TSV file with 10 columns:
 
-1. **read_id**: the Nanopore id of the read that the given JWR comes from
-2. **reference_name**: the mapped reference name  of the read that the given JWR coming from
+1. **read_id**: the Nanopore id of the read that the JWR comes from
+2. **reference_name**: the mapped reference name of the read the JWR comes from
 3. **inital_junction**: initial mapped splice junction
 4. **JAQ**: Junction alignment quality
 5. **candidates**: all candidate splice junctions 
-6. **candidate_preference**: candidate preference, which is based on the sequence pattern near the splice junction, can take value 0,1,2,3. Larger value means prefered.
+6. **candidate_sequence_motif_preference**: Based on known preferential use of specific intronic sequence patterns near splice junctions, can take value 0,1,2,3. Larger value means prefered.
 7. **SIQ**: Squiggle information quality. The squiggle is usually of poor quality if the SIQ is lower than -0.4.
 8. **prob_uniform_prior**: probability for each candidate using a uniform prior  
-9. **prob_seq_pattern_prior**: probability for each candidate using the sequence pattern prior (based on the candidate preference in column 6)
+9. **prob_seq_pattern_prior**: probability for each candidate using the sequence pattern prior (based on the candidate sequence motif preference in column 6)
 10. **best_prob**: value of the best probability in column 9
 
 ###  Updates coming soon
