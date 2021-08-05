@@ -82,13 +82,13 @@ Options:
 python3 JWR_checker.py –-chrID=chr1 –-genome-loc=5296679-5297165  --output_csv input.bam example.h5
 ```
 ## JWR_subset.py
-Subset the result from the JWR_checker. Based on our performance assessment, JWRs with high junction alignment quality (JAQ) are usually accurately mapped to their respective splice junctions. A subset of JWRs can be obtained by only selecting JWRs with a JAQ below a user-defined threshold. By default, JWR_subset.py selects all JWRs with a JAQ less than 0.9. **Note:** Currently `JWR_subset` only takes the HDF5 file from `JWR_checker` as input and returns the filtered subset back in HDF5 format. A table in CSV format can also be output with `--output_csv`.
+Subset the result from the JWR_checker. Based on our performance assessment, JWRs with high junction alignment quality (JAQ) are usually accurately mapped to their respective splice junctions. A subset of JWRs can be obtained by only selecting JWRs with a JAQ at or below a user-defined threshold. By default, JWR_subset.py selects all JWRs with a JAQ of 0.9 or less. **Note:** Currently `JWR_subset` only takes the HDF5 file from `JWR_checker` as input and returns the filtered subset back in HDF5 format. A table in CSV format can also be output with `--output_csv`.
 ```
 Usage: python JWR_subset.py [OPTIONS] <input file: hdf5 output from JWR_checker> <output file: hdf5>
 Options:
     -h/--help       Print this help text
     --bset_JAQ      A number from 0-1, JWRs with a junction alignment quality (JAQ) above
-                     the threshold will not be included <default: 0.9>
+                     the threshold will be filtered out <default: 0.9>
     --chrID         Target a specific chromosome, chrID should match
                         the chromosome name in the BAM
     --genome-loc    Target a specific genomic region, e.g. --genome-loc=0-10000
