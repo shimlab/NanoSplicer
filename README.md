@@ -9,7 +9,7 @@ The program contains 3 modules which need to be run in order to get the final re
 
 `JWR_checker.py`: Find junctions within reads (JWRs) from a spliced mapping result (BAM).
 
-`JWR_subset.py`: Subset the result from JWR_checker. Based on our performance assessment, JWRs with high junction alignment quality (JAQ) are usually accurately mapped to their respective splice junctions. This module filters JWRs based on their JAQ, allowing selection of JWRs with lower JAQ that will most benefit from anlaysis with the NanoSplicer module. By default, `JWR_subset.py` selects JWRs with a junction alignment quality of less than 0.9.
+`JWR_subset.py`: Subset the result from JWR_checker. Based on our performance assessment, JWRs with high junction alignment quality (JAQ) are usually accurately mapped to their respective splice junctions. This module filters JWRs based on their JAQ, allowing selection of JWRs with lower JAQs that will most benefit from anlaysis with the NanoSplicer module. By default, `JWR_subset.py` selects JWRs with a junction alignment quality of less than 0.9.
 
 `NanoSplicer.py`: Perform splice junction identification on the `JWR_checker.py` (or `JWR_subset.py` if applied) output. 
 
@@ -56,7 +56,7 @@ git clone https://github.com/shimlab/NanoSplicer.git
 ## JWR_checker.py
  Find junctions within reads (JWRs) from a spliced mapping result (BAM). For each JWR, `JWR_checker` reports the junction alignment quality for the initial mapping. 
  
- **Note:** Currently `JWR_checker` outputs a table in HDF5 format, which allows easier read-in in the following steps. A CSV format table can also be output with `--output_csv`, which is easier for users to read.  The downstream script `JWR_subset.py` and `NanoSplicer.py` only accepts the HDF5 as the input.
+ **Note:** Currently `JWR_checker` outputs a table in HDF5 format, which allows easier read-in in the following steps. A CSV format table can also be output with `--output_csv`, which is easier for users to read.  The downstream scripts `JWR_subset.py` and `NanoSplicer.py` only accept HDF5 as input.
 ```
 Finding junctions within reads (JWRs) from a spliced mapping result (BAM).
 
@@ -64,17 +64,17 @@ Usage: python JWR_checker.py [OPTIONS] <BAM file> <output hdf5 file>
 
 Options:
     -h/--help        Print this help text
-    -w/--window      Candidate searching window size (nt) <default: 25>
-    --chrID          Target on specific chromosome, chrID should match
+    -w/--window      Candidate search window size (nt) <default: 25>
+    --chrID          Target a specific chromosome, chrID should match
                         the chromosome name in the BAM. All chromosomes
                         in the BAM will be searched if not specified
-    --genome-loc     Target on specific genome region, chrID should be
-                        specified. e.g. --genome-loc=0-10000. Entire
-                        chromosome will be searched if not specified
+    --genome-loc     Target a specific genomic region, e.g. --genome-loc=0-10000
+                        Use in conunction with --chrID option. Entire
+                        chromosome will be searched if location not specified
     --threads        Number of threads used <default: 32>.
-    --output_csv     With this option, a csv file will be output with the hdf5 file
+    --output_csv     With this option, a csv file will be output along with the hdf5 file
 ```
-### Example: find all JWR from reads mapped to chromosome 1 (chr1) 5296679-5297165
+### Example: find all JWRs from reads mapped to region on chromosome 1: chr1:5296679-5297165
 ``` 
 python3 JWR_checker.py –-chrID=chr1 –-genome-loc=5296679-5297165  --output_csv input.bam example.h5
 ```
