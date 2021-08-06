@@ -76,6 +76,100 @@ from dtw import dtw
 # configuration
 #from config import *
 # parse command line arg
+class NanoSplicer_param:
+    def __init__(self, arg = sys.argv):
+        '''
+        1. Read from config file the default param
+        2. Read from commend line input the input files
+        '''
+        
+        argv = sys.argv
+        
+        try: 
+            opts, args = getopt.getopt(argv[1:],"hi:f:r:o:T:t:ab:F:w:c:",
+                        ["help","input_alignment=","input_fast5_dir=",
+                        "genome_ref=","output_path=", "trim_model=",
+                        "trim_signal=","dtw_adj","bandwidth=",
+                        "flank_size=", "window=", "config_file="])
+        except getopt.GetoptError:
+            helper.err_msg("Error: Invalid argument input") 
+            print_help()
+            sys.exit(1)
+
+        # DEFAULT VALUE
+        self.alignment_file, self.fast5_dir, self.genome_ref = None, None, None
+        self.output_path = None
+        self.trim_signal = 6
+        self.trim_model = 0
+        self.dtw_adj = False
+        self.bandwidth = 0.4
+        self.flank_size = 20
+        self.window = 10
+        self.config_file = 'config'
+        
+
+        
+        for opt, arg in opts:
+            if opt in  ("-h", "--help"):
+                print_help()
+                sys.exit(0)
+            elif opt in ("-i", "--input_alignment"):
+                self.alignment_file = arg
+            elif opt in ("-f", "--input_fast5_dir"):
+                self.fast5_dir = arg
+            elif opt in ("-r", "--genome_ref"):
+                self.genome_ref = arg
+            elif opt in ("-o", "--output_path"):
+                self.output_path = arg
+            elif opt in ("-T", "--trim_model"):
+                self.trim_model = int(arg)
+            elif opt in ("-t", "--trim_signal"):
+                self.trim_signal = int(arg)
+            elif opt in ("-a", "--dtw_adj"):
+                self.dtw_adj = True
+            elif opt in ("-b", "--bandwidth"):
+                self.bandwidth = float(arg)
+            elif opt in ("-F", "--flank_size"):
+                self.flank_size = int(arg)
+            elif opt in ("-w", "--window"):
+                self.window = int(arg)
+            elif opt in ("-c", "--config_file"):
+                self.config_file = str(arg)
+
+        # check input 
+        if not alignment_file or not fast5_dir or not genome_ref:
+            helper.err_msg("Error: Missing required input files: '-i', '-f', '-r'") 
+            sys.exit(1)
+
+        if not args:
+            helper.err_msg("Error: Invalid/Missing HDF5 file input")   
+            print_help()
+            sys.exit(1)
+
+        self.pd_file = args[0]
+        
+    def print_help(self):
+            help_message =\
+            '''
+            Usage: python {} [OPTIONS] <JWR_checker/JWR_subset hdf5 file>
+            Options:
+                -i      .bam/.sam file (required)
+                -f      path to fast5s (required)
+                -r      Genome reference file (required)
+                -o      output filename <default: 'NanoSplicer_out.tsv'>
+            For developer:
+                -T      Number of events trimmed from scrappie model <default: 0>
+                -t      Number of bases trimmed from raw signam, the raw samples are
+                            match to basecalled bases by tombo <default :6>
+                -F      Flanking sequence size in each side of candidate searching 
+                            window <default: 20>
+                -w      Candidate searching window size <default: 10>
+                -c      Config filename <default: 'config'>
+            '''.format(argv[0])
+            print(textwrap.dedent(help_message))
+
+
+
 def parse_arg():
     def print_help():
         help_message =\
@@ -110,17 +204,30 @@ def parse_arg():
         print_help()
         sys.exit(1)
 
+
+    # load config file
+    config_file = 'config'
+    for opt, arg in opts:
+        if opt in ("-c", "--config_file"):
+           config_file = str(arg)
+
+    mdl = importlib.import_module(config_file)
+    if "__all__" in mdl.__dict__:
+        names = mdl.__dict__["__all__"]
+    else:
+        names = [x for x in mdl.__dict__ if not x.startswith("_")]
+    globals().update({k: getattr(mdl, k) for k in names})
+
     # DEFAULT VALUE
     alignment_file, fast5_dir, genome_ref = None, None, None
-    output_path = None
+    out_fn = OUTPUT_FILENAME
     trim_signal = 6
     trim_model = 0
     dtw_adj = False
     bandwidth = 0.4
     flank_size = 20
     window = 10
-    config_file = 'config'
-    
+
     for opt, arg in opts:
         if opt in  ("-h", "--help"):
             print_help()
@@ -132,7 +239,7 @@ def parse_arg():
         elif opt in ("-r", "--genome_ref"):
             genome_ref = arg
         elif opt in ("-o", "--output_path"):
-            output_path = arg
+            out_fn = arg
         elif opt in ("-T", "--trim_model"):
            trim_model = int(arg)
         elif opt in ("-t", "--trim_signal"):
@@ -147,14 +254,21 @@ def parse_arg():
            window = int(arg)
         elif opt in ("-c", "--config_file"):
            config_file = str(arg)
-    
+
+    # import global variable from config file 
+    mdl = importlib.import_module(config_file)
+    if "__all__" in mdl.__dict__:
+        names = mdl.__dict__["__all__"]
+    else:
+        names = [x for x in mdl.__dict__ if not x.startswith("_")]
+    globals().update({k: getattr(mdl, k) for k in names})
+
 
     if not args:
         helper.err_msg("Error: Invalid argument input")   
         print_help()# print help doc when no command line args provided
         sys.exit(0)
     pd_file = args[0]
-    
     
     # check input
     if not alignment_file or not fast5_dir or not genome_ref:
@@ -170,33 +284,22 @@ def parse_arg():
                    band_prop = bandwidth,
                    dist_type = dist_type).dtw_local_alignment()
     
-    return fast5_dir, output_path, alignment_file, genome_ref, \
+    return fast5_dir, out_fn, alignment_file, genome_ref, \
             bandwidth, trim_model, trim_signal, flank_size, \
-             window,config_file, pd_file
+             window, pd_file
 
 def main():
     # parse command line argument
     fast5_dir, out_fn, alignment_file, genome_ref, \
         bandwidth, trim_model, trim_signal, \
-        flank_size, window, cfg_file, pd_file =  parse_arg()
-
-    # import global variable from config file 
-    mdl = importlib.import_module(cfg_file)
-    if "__all__" in mdl.__dict__:
-        names = mdl.__dict__["__all__"]
-    else:
-        names = [x for x in mdl.__dict__ if not x.startswith("_")]
-    globals().update({k: getattr(mdl, k) for k in names})
-    
-    chrID = CHROMOSOME_NAME
-    if not out_fn:
-        out_fn  = OUTPUT_FILENAME
+        flank_size, window, pd_file =  parse_arg()
 
     # check file exist
     if os.path.isfile(out_fn):
         helper.err_msg("File '{}' exists, please re-try by specify another output filename or remove the existing file.".format(out_fn)) 
         sys.exit(1)
-    
+
+    # creat empty file will header
     else:
         f = open(out_fn, "w")
         f.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
@@ -205,13 +308,14 @@ def main():
                                             'inital_junction',
                                             'JAQ',
                                             'candidates',
-                                            'candidate_preference',
+                                            'candidate_sequence_motif_preference',
                                             'SIQ',
                                             'prob_uniform_prior',
                                             'prob_seq_pattern_prior',
                                             'best_prob'
                                              ))
     f.close()
+
     # import data
     jwr_df = pd.read_hdf(pd_file, key = 'data')
     
@@ -233,7 +337,6 @@ def main():
                                 alignment_file,
                                 genome_ref,
                                 window,
-                                chrID,
                                 flank_size,
                                 trim_model,
                                 trim_signal,
@@ -262,7 +365,7 @@ def write_err_msg(d, jwr, error_msg):
 
 # running a single process 
 def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile, 
-                    window, chrID, flank_size, trim_model, trim_signal,
+                    window, flank_size, trim_model, trim_signal,
                     bandwidth, output_file):
     '''
     Description:
@@ -329,9 +432,12 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
         if jwr.loc not in candidate_tuples:
             candidate_tuples.append(jwr.loc)
 
-        candidate_motif, motif_start, motif_end, candidate_preference = \
-                candidate_motif_generator(jwr.chrID, candidate_tuples, 
-                                          flank_size, ref_FastaFile, pattern_preference = PATTERN_PREFERENCE)
+        candidate_motif, motif_start_ref, motif_end_ref, \
+            candidate_preference = candidate_motif_generator(
+                                        jwr.chrID, candidate_tuples, 
+                                        flank_size, ref_FastaFile,
+                                        pattern_preference = PATTERN_PREFERENCE)
+
         candidate_preference = np.array(candidate_preference)
         
         if not candidate_motif:# or len(candidate_motif) == 1:  
@@ -348,86 +454,42 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
             candidates_for_read = candidate_motif     
  
         # trim signal (use fewer base)
-        motif_start += trim_signal
-        motif_end -= trim_signal
+        motif_start_ref += trim_signal
+        motif_end_ref -= trim_signal
 
 
-        tombo_results, tombo_start_clip, tombo_end_clip, std_ref, sd_of_median= \
-                tombo_squiggle_to_basecalls(multi_fast5, read)  
-        # tombo resquiggle
-        # try:
-        #     tombo_results, tombo_start_clip, tombo_end_clip, std_ref, sd_of_median= \
-        #         tombo_squiggle_to_basecalls(multi_fast5, read)
-        # except:
-        #     failed_jwr = write_err_msg(failed_jwr, jwr, 'Fail to resquiggle (Tombo).')
-        #     continue
+
+        #tombo resquiggle
+        try:
+            tombo_results, tombo_start_clip, tombo_end_clip, std_ref, sd_of_median= \
+                tombo_squiggle_to_basecalls(multi_fast5, read)
+        except:
+            failed_jwr = write_err_msg(failed_jwr, jwr, 'Fail to resquiggle (Tombo).')
+            continue
+        
         read_length = len(tombo_results.genome_seq) \
-                                + tombo_start_clip + tombo_end_clip
-        #normalised_raw_signal = tombo_results.raw_signal/1.4826 # don't need to normalise base on sd
-        normalised_raw_signal = tombo_results.raw_signal
-        # genome pos to read pos mapping vector
-        g_r_mapping = \
-            genome_to_read_pos_conversion(read.cigarstring)
+                            + tombo_start_clip + tombo_end_clip
 
-        # convert to read relative pos (forward direction)
-        start_pos_rel_to_mapped_start = motif_start - read.reference_start
-        end_pos_rel_to_mapped_start = motif_end - read.reference_start
-
-        if  start_pos_rel_to_mapped_start >= 0 \
-                    and start_pos_rel_to_mapped_start < len(g_r_mapping):
-            motif_start_read = g_r_mapping[start_pos_rel_to_mapped_start]
-
-            # discard junction squiggle with the queried motif start/end 
-            # mapped to gaps
-            if motif_start_read == -1:
-                failed_jwr = write_err_msg(failed_jwr, jwr, 'Flanking window is too large')
-                continue
-            elif g_r_mapping[start_pos_rel_to_mapped_start] == \
-                g_r_mapping[start_pos_rel_to_mapped_start - 1]:
-                motif_start_read += 1 
-        else:
-            failed_jwr = write_err_msg(failed_jwr, jwr, 'Flanking window is too large')
+        # read coordinate of JWR start and end
+        jwr_loc_read = locate_jwr_bases(read_length, std_ref, sd_of_median, 
+                            read, motif_start_ref, motif_end_ref)
+        
+        if not jwr_loc_read:
+            failed_jwr = write_err_msg(failed_jwr, jwr, 'Fail to get the JWR bases in read.')
             continue
-        
-        if end_pos_rel_to_mapped_start < len(g_r_mapping):
-            motif_end_read = g_r_mapping[end_pos_rel_to_mapped_start - 1] + 1
-            if motif_end_read == -1 + 1:
-                failed_jwr = write_err_msg(failed_jwr, jwr, 'Flanking window is too large')
-                continue
-        else:
-            failed_jwr = write_err_msg(failed_jwr, jwr, 'Flanking window is too large')
-            continue
-        
-        # get signal
-        if not read.is_reverse:
-            seg_start = max(motif_start_read - tombo_start_clip, 0)
-            seg_end = motif_end_read - tombo_start_clip
-        else:
-            seg_start = \
-                max(read_length - motif_end_read -1 - tombo_start_clip, 0)
-            seg_end = read_length - motif_start_read - 1 - tombo_start_clip
-        
-        # take into account the end clip
-        seg_end = min(seg_end, len(tombo_results.segs) - 1)
-        
-        # getting junction squiggle
-        signal = normalised_raw_signal[
-            tombo_results.segs[seg_start]:tombo_results.segs[seg_end]]
 
-        if not len(signal):
-            failed_jwr = write_err_msg(failed_jwr, jwr, 'Fail to get junction squiggle')
-            continue
-        else:
-            junction_squiggle = np.array(signal, float)
-
-        # outlier removal
-        junction_squiggle = junction_squiggle[abs(junction_squiggle) < 4]        
+     
+        # get junction squiggle
+        junction_squiggle = get_junc_squiggle(tombo_results, 
+                            tombo_start_clip, read_length, 
+                            read, jwr_loc_read, spike_thres=SPIKE_THRES)
         
+        if not len(junction_squiggle):
+            failed_jwr = write_err_msg(failed_jwr, jwr, 
+                                'Fail to get junction squiggle')
+            continue
+
         # candidate squiggle
-        # model_dic = helper.expect_squiggle_dict(seqs=candidates_for_read, 
-        #                                         trim=trim_model,
-        #                                         model='squiggle_r94',
-        #                                         uniform_dwell=UNIFORM_DWELL)
         model_dic = helper.expect_squiggle_dict_tombo(seqs=candidates_for_read, 
                                                 std_ref = std_ref,
                                                 uniform_dwell=UNIFORM_DWELL,
@@ -439,7 +501,6 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
         output_prefix = ''
         num_of_cand = len(candidates_for_read)
         aligned_base = {}
-        # edited
 
         for j, candidate in enumerate(candidates_for_read):
             candidate_squiggle = np.array(model_dic[candidate],float)
@@ -452,8 +513,7 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
                                wavelet='sym8', rescale_sigma='True')
                 path , score, cum_matrix = \
                     dtw_local_alignment(candidate_squiggle = candidate_squiggle, 
-                                        junction_squiggle = junction_squiggle_wav)   
-            #dtw run
+                                        junction_squiggle = junction_squiggle_wav)
             else:
                 path , score, cum_matrix = \
                     dtw_local_alignment(candidate_squiggle = candidate_squiggle, 
@@ -464,7 +524,8 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
             
             # candidate squiggle in matched len of junction suqiggle
             squiggle_match[j] = candidate_squiggle[path[:,1] - 1, :]
-            # change to sd for segment mean
+            
+            # change to sd for segment median
             squiggle_match[j][:,1] = [sd_of_median] * squiggle_match[j].shape[0]
             aligned_base[j] = candidate[trim_model + int((path[0,1] - 1)/UNIFORM_DWELL): trim_model+ int((path[-1,1] - 1)/UNIFORM_DWELL) + 1]
             #cum_path[j] = cum_matrix[path[:, 0], path[:, 1]]
@@ -887,29 +948,6 @@ def tombo_squiggle_to_basecalls(multi_fast5, AlignedSegment):
 
     return rsqgl_results, start_clip, end_clip, std_ref, sd_of_median
 
-def genome_to_read_pos_conversion(cigar):
-    '''
-    Input:
-        g_pos: 0-base position within genome
-        cigar: CIGAR string from BAM/SAM file
-    
-    Returns:
-        r_pos: 0-base position within a read
-    '''
-    cigar_long = []
-    for count, type in re.findall('(\d+)([A-Za-z=])', cigar):
-        cigar_long += int(count) * [type]
-    r_index = -1
-    g_r_mapping = []
-    for i in cigar_long:
-        if i in "MIS=X":
-            r_index += 1
-        if i in "MD=X":
-            g_r_mapping.append(r_index)
-        if i == "N":
-            g_r_mapping.append(-1)
-    return g_r_mapping
-
 def median_denoise(junction_squiggle, squiggle_match_list):
     median_junction_squiggle = np.array([])
     event = junction_squiggle[0:1]
@@ -961,10 +999,9 @@ def sd_from_tombo(tombo_results, std_ref, read_seq):
     expected_means, _ = std_ref.get_exp_levels_from_seq(read_seq, rev_strand=False)
     return np.std(expected_means - med_seg)
 
-# seg calculation
 def find_candidate_middle_pos(squiggle_match):
     '''
-    function for plot bases 
+    function for plot bases: find the middel point of each aligned k-mer
     '''
     out = [0]
     for i in range(1, len(squiggle_match)):
@@ -1000,9 +1037,9 @@ def get_distinguishing_segment(matched_candidate_ref,
     
     return np.array(segment), is_dist_seg
 
-# function for getting the junction mapping quality
 def get_junction_cigar(junction1, junction2, cigar, read_start, half_motif_size=25):
     '''
+    Getting the junction CIGAR
     input:
         junction1: left-hand side splice junction
         junction2: right-hand side splice junction
@@ -1059,6 +1096,102 @@ def __log_likelihood(a, b_mean, b_std,
         return norm_log_density(a, b_mean, b_std, max_diff)
     else:
         return norm_log_density(a, b_mean, b_std) 
+
+def locate_jwr_bases(read_length, std_ref, sd_of_median, 
+                            read, motif_start_ref, motif_end_ref):
+    '''
+    locating the JWR bases within a read:
+    read: AlignmentSegment class from pysam
+
+    return:
+        0-based read coordinate of JWR start and end
+    '''
+
+    # genome pos to read pos mapping vector
+    g_r_mapping = genome_to_read_pos_conversion(read.cigarstring)
+
+    # convert to read relative pos (forward direction)
+    start_pos_rel_to_mapped_start = motif_start_ref - read.reference_start
+    end_pos_rel_to_mapped_start = motif_end_ref - read.reference_start
+
+    # make sure the read covers the genome coordinate
+    if  start_pos_rel_to_mapped_start >= 0 \
+                and start_pos_rel_to_mapped_start < len(g_r_mapping):
+        motif_start_read = g_r_mapping[start_pos_rel_to_mapped_start]
+
+        if motif_start_read == -1: #queried motif start/end mapped to intron 'N'
+            return None
+        elif g_r_mapping[start_pos_rel_to_mapped_start] == \
+            g_r_mapping[start_pos_rel_to_mapped_start - 1]:
+            motif_start_read += 1 
+    else:
+        return None
+    
+    if end_pos_rel_to_mapped_start < len(g_r_mapping):
+        motif_end_read = g_r_mapping[end_pos_rel_to_mapped_start - 1] + 1
+        if motif_end_read == -1 + 1:
+            return None
+        else:
+            return motif_start_read, motif_end_read
+    else:
+        return None
+
+def get_junc_squiggle(tombo_results, tombo_start_clip, read_length, 
+                        read, jwr_loc_read, spike_thres):
+    '''
+    Return junction squiggle with spike removed
+    '''
+    motif_start_read, motif_end_read = jwr_loc_read
+
+    if not read.is_reverse:
+        seg_start = max(motif_start_read - tombo_start_clip, 0)
+        seg_end = motif_end_read - tombo_start_clip
+    else:
+        seg_start = \
+            max(read_length - motif_end_read -1 - tombo_start_clip, 0)
+        seg_end = read_length - motif_start_read - 1 - tombo_start_clip
+    
+    # take into account the end clip
+    seg_end = min(seg_end, len(tombo_results.segs) - 1)
+    
+    # getting junction squiggle
+    signal = tombo_results.raw_signal[
+        tombo_results.segs[seg_start]:tombo_results.segs[seg_end]]
+
+    # check output
+    if not len(signal):
+        return []
+    else:
+        return np.array(signal, float)
+    
+
+
+    # spike removal
+    junction_squiggle = junction_squiggle[abs(junction_squiggle) < spike_thres]   
+
+def genome_to_read_pos_conversion(cigar):
+    '''
+    Input:
+        g_pos: 0-base position within genome
+        cigar: CIGAR string from BAM/SAM file
+    
+    Returns:
+        r_pos: 0-base position within a read, '-1' if the corresponding genome 
+            coordinate is skipped ('N' in cigar) in the alignment 
+    '''
+    cigar_long = []
+    for count, type in re.findall('(\d+)([A-Za-z=])', cigar):
+        cigar_long += int(count) * [type]
+    r_index = -1
+    g_r_mapping = []
+    for i in cigar_long:
+        if i in "MIS=X":
+            r_index += 1
+        if i in "MD=X":
+            g_r_mapping.append(r_index)
+        if i == "N":
+            g_r_mapping.append(-1)
+    return g_r_mapping
 
 if __name__ == "__main__":
     main()
