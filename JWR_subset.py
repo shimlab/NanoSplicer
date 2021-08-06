@@ -62,14 +62,14 @@ class JWR_subset_param:
         Usage: python {} [OPTIONS] <input file: hdf5 output from JWR_checker> <output file: hdf5>
         Options:
             -h/--help       Print this help text
-            --bset_JAQ      A number from 0-1, JWRs with junction alignment quality (JAQ) above
-                             the threshold will not be included <defalt: 0.9>
-            --chrID         Target on specific chromosome, chrID should match
+            --bset_JAQ      A value from 0-1, only JWRs with a junction alignment quality (JAQ)
+                            at or below the specified value will be retained <default: 0.9>
+            --chrID         Target a specific chromosome, chrID should match
                                 the chromosome name in the BAM
-            --genome-loc    Target on specific genome region, chrID should be 
-                                specified. e.g. --genome-loc=0-10000
-            --output_csv    With this option, a csv file will be output with
-                                 the hdf5 file
+            --genome-loc    Target a specific genomic region, e.g. --genome-loc=0-10000
+                                --chrID should be also specified.
+            --output_csv    With this option, a csv file will be output along
+                                with the hdf5 file
         '''.format(sys.argv[0])
 
         print(textwrap.dedent(help_message))

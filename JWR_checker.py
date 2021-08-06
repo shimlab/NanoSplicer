@@ -242,16 +242,15 @@ class JWR_checker_param:
         
         Options:
             -h/--help        Print this help text
-            -w/--window      Candidate searching window size <default: 25>
-            --chrID          Target on specific chromosome, chrID should match
-                                the chromosome name in the BAM. All chromosome 
+            -w/--window      Candidate search window size (nt) <default: 25>
+            --chrID          Target a specific chromosome, chrID should match
+                                the chromosome name in the BAM. All chromosomes
                                 in the BAM will be searched if not specified
-            --genome-loc     Target on specific genome region, chrID should be 
-                                specified. e.g. --genome-loc=0-10000. Entire 
-                                chromosome will be searched if not specified
+            --genome-loc     Target a specific genomic region, e.g. --genome-loc=0-10000
+                                Use in conjunction with --chrID option. Entire
+                                chromosome will be searched if location not specified
             --threads        Number of threads used <default: 32>.
-            --output_csv     With this option, a csv file will be output with
-                                 the hdf5 file
+            --output_csv     With this option, a csv file will be output along with the hdf5 file
         '''.format(sys.argv[0])
 
         print(textwrap.dedent(help_message))
