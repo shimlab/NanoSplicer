@@ -5,19 +5,28 @@ Input:
     subset of pandas dataframe of JWR to be tested (in HDF5), using key = "data"
 
 Output:
-    Figure 1:
-     Correct cases: comparison for the best two candidate (figure) which containing:
-     Incorrect cases: camparison for the true one and the NanoSplicer one:
-        1. two candidate squiggles in two difference colors
-        2. Highlight distinguishing point
-    Figure 2: log LR contribution and accumulative log LR
-        1. Highlight distinguishing point
     Results:
         1. DTW score for both candidate
         2. Aligned length
         3. Number of distinguishing point
-        4. log LR contribution from the distinguishing point         
-    Option to output the candidate and junction squiggles
+        4. log LR contribution from the distinguishing point     
+    
+    Visulisation:
+        Alignment figure 1:
+            * Align the junction squiggle to the base candidate squiggle and 
+            another candidate squiggle
+            * Highlight distinguishing segment (The definition of distinguishing
+            segment is defined in the config file)
+    
+        Alignment figure 2:
+            Figure 2: log LR contribution and accumulative log LR
+            * Aligned candidate squiggles same as figure 1.
+            * A line short the LR contribution for each segments
+            * Highlight distinguishing segment (The definition of distinguishing
+            segment is defined in the config file)
+    
+    Candidate squiggle and junction squiggle:
+        Output CSV files for candidate squiggle and junction squiggle.
 
 Update to the NanoSplicer_seg.py:
     * Use JWR_checker hdf as input.
@@ -29,6 +38,8 @@ import importlib
 import textwrap
 import pandas as pd
 import matplotlib 
+
+# output in .svg format
 matplotlib.use('svg')
 new_rc_params = {'text.usetex': False,
 "svg.fonttype": 'none'
@@ -76,7 +87,7 @@ def parse_arg():
             -r      Genome reference file (required)
             -o      output filename <default: 'NanoSplicer_out.tsv'>
         For developer:
-            -T      Number of events trimmed from scrappie model <default: 2>
+            -T      Number of events trimmed from scrappie model <default: 0>
             -t      Number of bases trimmed from raw signam, the raw samples are
                         match to basecalled bases by tombo <default :6>
             -F      Flanking sequence size in each side of candidate searching 

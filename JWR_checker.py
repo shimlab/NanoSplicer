@@ -40,16 +40,21 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import multiprocessing as mp
 import helper
 
-# modify the output HDF5 file
-class JWR_to_hdf(h5py.File):    
+
+class JWR_to_hdf(h5py.File):
+    '''
+    modify the output HDF5 fil
+    '''  
     def __init__(self, Filename):
         super().__init__(Filename, 'r+')
     def add_setting_info(self, name, value):
         name = 'setting/' + name
         self[name] = value
 
-# Get information from bam
 class JWR_from_reads:
+    '''
+    Get information from bam
+    '''
     def __init__(self, read_iter):
         '''
         read_iter: read iterator from pysam. e.g. from .fetch function
@@ -75,8 +80,6 @@ class JWR_from_reads:
                     junc_start = base_position
                     base_position += nt
                     yield JWR_class(read, (junc_start, base_position),read.reference_name)
-        #             introns.append((junc_start, base_position))
-        # return introns
 
 class JWR_class:
     def __init__(self, read, loc, chrID):
@@ -143,48 +146,6 @@ class JWR_class:
         else:
             return 0
 
-
-# import os 
-# PWD = '/data/cephfs/punim0614/yupei/deep_sequins/analysis/pipeline/NanoSplicer_11.3/NanoSplicer_run/seg_version'
-# os.chdir(PWD)
-
-# a = pysam.AlignmentFile('genome_map_sequins_barcode01.sorted.bam')
-# a  = JWR_from_bam('genome_map_sequins_barcode01.sorted.bam')
-
-# if 'N' in r.cigarstring:
-#     last_read_pos = False
-#     for read_loc, genome_loc in r.get_aligned_pairs():
-#         if read_loc is None and last_read_pos:
-#             start = genome_loc
-#         elif read_loc and last_read_pos is None:
-#             stop = genome_loc  # we are right exclusive ,so this is correct
-#             res[(start, stop)] += 1
-#             del start
-#             del stop
-#         last_read_pos = read_loc
-
-# def introns_in_read(read):
-#     """
-#     Input:
-#         read: AlignedSegment object from pysam
-#     Return:
-#         list of introns [(start, stop),...]
-#         Listing the intronic sites in the reads (identified by 
-#         'N' in the cigar strings).
-#     """
-#     match_or_deletion = {0, 2, 7, 8} # only M/=/X (0/7/8) and D (2) are related to genome position
-#     ref_skip = 3
-#     base_position = read.pos
- 
-#     introns = []
-#     for op, nt in read.cigartuples:
-#         if op in match_or_deletion:
-#             base_position += nt
-#         elif op == ref_skip:
-#             junc_start = base_position
-#             base_position += nt
-#             introns.append((junc_start, base_position))
-#     return introns
 
 class JWR_checker_param:
     def __init__(self, arg = sys.argv):
