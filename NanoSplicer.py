@@ -904,7 +904,7 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
             if SAVE_DATA:
                 np.savetxt("candidate_{}_{}({}).csv".format(j, jwr.id,jwr.loc[0]), squiggle_match[j], delimiter=",")
                 np.savetxt("squiggle_{}({}).csv".format(read.qname,jwr.loc[0]), junction_squiggle, delimiter=",")
-                exit()
+
     return failed_jwr
 
 def get_gaps_in_read(AlignedSegment):
