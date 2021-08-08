@@ -118,7 +118,12 @@ def canonical_site_finder(aligned_seg, candidate_Interval, ref_FastaFile,
     
     # check determined transcript direction (by minimap2)
     try:
-        ts = read.get_tag("ts")
+        ts = AlignmentFile.get_tag("ts")
+        if AlignmentFile.is_reverse:
+            if ts == '+':
+                ts = '-'
+            if ts == '-':
+                ts = '+'
     except:
         ts = None
 

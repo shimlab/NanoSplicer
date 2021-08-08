@@ -130,7 +130,6 @@ def parse_candidate_file(filename):
 				sys.exit(0)
 	return candidate_list
 
-
 def plot_dtw_alignment( long_seq, short_seq, dtw_path, dtw_score = None, \
 	show_sd = True, figure_name = "Untitled", \
 	figure_title = "Untitled",**plot_args):
@@ -181,7 +180,6 @@ def plot_dtw_alignment( long_seq, short_seq, dtw_path, dtw_score = None, \
 		
 	plt.savefig(figure_name + ".png")
 	plt.close()
-
 
 class Fast5Class(object):
 	def __init__(self, filename):
@@ -268,3 +266,4 @@ def err_msg(msg):
 	CRED = '\033[91m'
 	CEND = '\033[0m'
 	print(CRED + msg + CEND)	
+

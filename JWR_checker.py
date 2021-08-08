@@ -146,7 +146,6 @@ class JWR_class:
         else:
             return 0
 
-
 class JWR_checker_param:
     def __init__(self, arg = sys.argv):
         self.arg = arg
@@ -215,8 +214,6 @@ class JWR_checker_param:
         '''.format(sys.argv[0])
 
         print(textwrap.dedent(help_message))
-
-
 
 def tqdm_parallel_map(executor, fn, *iterables, **kwargs):
     """

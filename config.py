@@ -36,4 +36,5 @@ SAVE_DATA = False
 PLOT = False
 PLOT_LR = False
 RESULT = True
+JWR_BED = True
 OUTPUT_FILENAME = 'NanoSplicer_out.tsv'

@@ -73,10 +73,11 @@ from junction_identification import find_candidate, canonical_site_finder, \
                                                     candidate_motif_generator
 from dtw import dtw
 
-# configuration
-#from config import *
-# parse command line arg
+
 class NanoSplicer_param:
+    '''
+    this is not current in use
+    '''
     def __init__(self, arg = sys.argv):
         '''
         1. Read from config file the default param
@@ -167,8 +168,6 @@ class NanoSplicer_param:
                 -c      Config filename <default: 'config'>
             '''.format(argv[0])
             print(textwrap.dedent(help_message))
-
-
 
 def parse_arg():
     def print_help():
@@ -298,6 +297,9 @@ def main():
     if os.path.isfile(out_fn):
         helper.err_msg("File '{}' exists, please re-try by specify another output filename or remove the existing file.".format(out_fn)) 
         sys.exit(1)
+    if os.path.isfile(out_fn+'.bed'):
+        helper.err_msg("File '{}' exists, please re-try by specify another output filename or remove the existing file.".format(out_fn+'.bed')) 
+        sys.exit(1)
 
     # creat empty file will header
     else:
@@ -348,7 +350,6 @@ def main():
     
     pd.concat([x.result() for x in futures]).to_csv("error_summary.csv")
 
-
 def write_err_msg(d, jwr, error_msg):
     '''
     save failed jwr in d <pd.DataFrame> with specified error message
@@ -390,7 +391,9 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
         on each linein the output_file write NanoSplice output in the following columns
 
         <to be added>
-    '''                                                                                                                                                                                                                                                                                                                                                                                                                                               
+    '''               
+    np.random.seed(2021)
+
     # dtw version (function alias)
     def dtw_local_alignment(candidate_squiggle, junction_squiggle, 
                             bandwidth = bandwidth, dist_type = None):
@@ -456,8 +459,6 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
         # trim signal (use fewer base)
         motif_start_ref += trim_signal
         motif_end_ref -= trim_signal
-
-
 
         #tombo resquiggle
         try:
@@ -530,11 +531,8 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
             aligned_base[j] = candidate[trim_model + int((path[0,1] - 1)/UNIFORM_DWELL): trim_model+ int((path[-1,1] - 1)/UNIFORM_DWELL) + 1]
             #cum_path[j] = cum_matrix[path[:, 0], path[:, 1]]
 
-    
-################################# segment median (pairwise version)
-            # LR plot
+            # Alignment plot
             if PLOT and j == num_of_cand - 1:
-
                 # minimap2 candidate as reference
                 matched_candidate_ref = squiggle_match[index_m]
                 squiggle_match_list = [squiggle_match[x] for x in range(num_of_cand)]
@@ -542,7 +540,7 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
                     [median_denoise(junction_squiggle, [matched_candidate_ref, x]) for x in squiggle_match_list]
                 segment_list = \
                     [get_distinguishing_segment(matched_candidate_ref, [x]) for x in squiggle_match_list]
-                
+
                 # LR calculation (distinguishing segment only)
                 dist_seg_LR = []
 
@@ -637,8 +635,7 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
                 fig.subplots_adjust(right=0.8)
                 fig.savefig("{}_median_pairwise.svg".format(read.qname), format = 'svg')
 
-################################# segment median LR (pairwise version) LR contribution
-            # LR plot
+            # LR contribution plot
             if PLOT_LR and j == num_of_cand - 1:
 
                 # minimap2 candidate as reference
@@ -732,7 +729,7 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
 
                 fig.savefig("{}_LR_median_pairwise.png".format(read.qname))
 
-##################################
+                
                 #plot cumulative contribution of LR of each data point
                 if False:
                     ax2.plot(cum_path[1] - cum_path[0], 
@@ -747,9 +744,6 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
                     # candidate_squiggle[:,0] = (candidate_squiggle[:,0] - med_c) / mad_c
                     # candidate_squiggle[:,1] = candidate_squiggle[:,1] / mad_c
                 
-            if SAVE_DATA:
-                np.savetxt("{}_candidate{}_{}.csv".format(output_prefix, read.qname,j), squiggle_match[j], delimiter=",")
-                np.savetxt("junction_squiggle{}.csv".format(read.qname), junction_squiggle, delimiter=",")
             # Plot DTW 
             if False:
                 print(score)
@@ -790,8 +784,7 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
                 fig.savefig("{}_fig{}_{}.png".format(output_prefix,read.qname, j))
                 plt.close()
 
-################################# segment median (pairwise version) result output
-
+            # NanoSplicer plot
             if RESULT and j == num_of_cand - 1:
                 # minimap2 candidate as reference
                 matched_candidate_ref = squiggle_match[index_m]
@@ -873,7 +866,45 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
                     ))
                     # fcntl.flock(f,fcntl.LOCK_UN)
                 f.close()
-    
+
+                if JWR_BED:
+                    junc_start, junc_end =\
+                         candidate_tuples[np.argmax(post_prob_prior)]
+
+                    try:
+                        ts = read.get_tag("ts")
+                        if read.is_reverse:
+                            if ts == '+':
+                                ts = '-'
+                            if ts == '-':
+                                ts = '+'
+                    except:
+                        ts = None
+                    
+                    f_bed = open(output_file+'.bed', "a")
+                    
+                    f_bed.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
+                        jwr.chrID,
+                        str(junc_start - 25),
+                        str(junc_end + 25),
+                        jwr.id,
+                        '{:.4f}'.format(np.max(post_prob_prior)),
+                        ts,
+                        str(junc_start - 25),
+                        str(junc_end + 25),
+                        '255,0,0',
+                        '2',
+                        '25,25',
+                        '0,{}'.format(junc_end-junc_start + 25),
+                        ))
+                        # fcntl.flock(f,fcntl.LOCK_UN)
+                    f_bed.close()
+            
+            # save squiggles as csv
+            if SAVE_DATA:
+                np.savetxt("candidate_{}_{}({}).csv".format(j, jwr.id,jwr.loc[0]), squiggle_match[j], delimiter=",")
+                np.savetxt("squiggle_{}({}).csv".format(read.qname,jwr.loc[0]), junction_squiggle, delimiter=",")
+                exit()
     return failed_jwr
 
 def get_gaps_in_read(AlignedSegment):
@@ -1036,37 +1067,6 @@ def get_distinguishing_segment(matched_candidate_ref,
                     > DIST_SD * matched_candidate_ref[seg_start,1], axis = 0)
     
     return np.array(segment), is_dist_seg
-
-def get_junction_cigar(junction1, junction2, cigar, read_start, half_motif_size=25):
-    '''
-    Getting the junction CIGAR
-    input:
-        junction1: left-hand side splice junction
-        junction2: right-hand side splice junction
-        cigar: cigar string for queried reads
-        read_start：ref pos that first base of the reads mapped to
-        harf_motif_size:
-            motif_start = junc1 - harf_motif_size
-            motif_end = junc2 + harf_motif_size
-    '''
-    cigar_long = []
-    for count, type in re.findall('(\d+)([A-Za-z])', cigar):
-        cigar_long += int(count) * [type]
-    
-    junc1_rel_read_start = junction1 - read_start
-    junc2_rel_read_start = junction2 - read_start
-    
-    junction_cigar = ''
-    ref_index = -1
-    for i in cigar_long:
-        if i in 'MND':
-            ref_index += 1
-        if ref_index >= junc1_rel_read_start - half_motif_size \
-                and ref_index < junc2_rel_read_start + half_motif_size and i != 'N':
-            #print(i, ref_index + read_start)
-            junction_cigar +=  i
-        if ref_index >= junc2_rel_read_start + half_motif_size:
-            return junction_cigar
         
 def get_junc_map_quality(cigar):
     '''
