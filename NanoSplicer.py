@@ -793,9 +793,13 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
 
                 junction_squiggle_median_list = \
                     [median_denoise(junction_squiggle, [matched_candidate_ref, x]) for x in squiggle_match_list]
-                segment_list = \
-                    [get_distinguishing_segment(matched_candidate_ref, [x]) for x in squiggle_match_list]
                 
+                try:
+                    segment_list = \
+                        [get_distinguishing_segment(matched_candidate_ref, [x]) for x in squiggle_match_list]
+                except:
+                    failed_jwr = write_err_msg(failed_jwr, jwr, 'Fail to get segments')
+                    continue
                 # LR calculation (distinguishing segment only)
                 dist_seg_logLR = []
                 dist_seg_logLR_individual = []
