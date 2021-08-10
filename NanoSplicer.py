@@ -895,16 +895,20 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
                     
                     f_bed = open(output_file+'.bed', "a")
                     
+                    best_q = np.max(post_prob_prior)
+                    bed_col =\
+                         BED_COL[0] if best_q > BESTQ_THRESH else BED_COL[1]
+                    
                     f_bed.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
                         jwr.chrID,
                         str(junc_start - 25),
                         str(junc_end + 25),
                         jwr.id,
-                        '{:.4f}'.format(np.max(post_prob_prior)),
+                        '{:.4f}'.format(best_q),
                         ts,
-                        str(junc_start - 25),
-                        str(junc_end + 25),
-                        '255,0,0',
+                        '0',
+                        '0',
+                        bed_col,
                         '2',
                         '25,25',
                         '0,{}'.format(junc_end-junc_start + 25),
