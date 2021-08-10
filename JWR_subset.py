@@ -87,9 +87,10 @@ def main():
             x[0] >= param.g_loc[0] and x[1] <= param.g_loc[1])]
     
     if param.best_jaq:
-        d = d[d.JAQ <= param.best_jaq]
-
-    d.to_hdf(param.output_h5, 'data')
+        d[d.JAQ <= param.best_jaq].to_hdf(param.output_h5, 'data')
+        d[d.JAQ > param.best_jaq].to_hdf(param.output_h5, 'skipped')
+    else:
+        d.to_hdf(param.output_h5, 'data')
     
     print('\n\nJWR_subset select {} out of {} JWRs\n\n'.format(len(d), original_total))
 

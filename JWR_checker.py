@@ -96,6 +96,15 @@ class JWR_class:
         self.loc = loc
         self.chrID = chrID
         self.mapq = read.mapping_quality
+        try:
+            self.ts = read.get_tag("ts")
+            if read.is_reverse:
+                if self.ts == '+':
+                    self.ts = '-'
+                if self.ts == '-':
+                    self.ts = '+'
+        except:
+            ts = None
     def get_JAQ(self, half_motif_size=25):
         '''
         Report the junction alignment quality
@@ -234,6 +243,7 @@ def get_row(jwr_class_list, junc_cigar_win):
     d = pd.DataFrame(
         {'id': [jwr.qname for jwr in jwr_class_list],
              'mapQ': [jwr.mapq for jwr in jwr_class_list],
+             'transcript_strand': [jwr.ts for jwr in jwr_class_list],
              'chrID': [jwr.chrID for jwr in jwr_class_list],
              'loc': [jwr.loc for jwr in jwr_class_list], 
              'JAQ': [jwr.get_JAQ(junc_cigar_win) for jwr in jwr_class_list]

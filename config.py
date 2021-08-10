@@ -36,5 +36,11 @@ SAVE_DATA = False
 PLOT = False
 PLOT_LR = False
 RESULT = True
-JWR_BED = True
 OUTPUT_FILENAME = 'NanoSplicer_out.tsv'
+
+# BED output 
+JWR_BED = True
+BED_SIQ = -0.4
+OUTPUT_JUNC_COUNT = True
+BESTQ_THRESH = 0.8
+JUNC_BED_FN = 'junction_support.bed'

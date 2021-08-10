@@ -72,6 +72,7 @@ import helper
 from junction_identification import find_candidate, canonical_site_finder, \
                                                     candidate_motif_generator
 from dtw import dtw
+import junction_support_bed as jsb
 
 
 class NanoSplicer_param:
@@ -335,12 +336,12 @@ def main():
 
     futures = [executor.submit(run_multifast5, 
                                 f, 
-                                jwr_df,
-                                alignment_file,
-                                genome_ref,
-                                window,
-                                flank_size,
-                                trim_model,
+                                jwr_df, 
+                                alignment_file, 
+                                genome_ref, 
+                                window, 
+                                flank_size, 
+                                trim_model, 
                                 trim_signal,
                                 bandwidth,
                                 out_fn) for f in fast5_paths]
@@ -349,6 +350,13 @@ def main():
         pbar.update(1)
     
     pd.concat([x.result() for x in futures]).to_csv("error_summary.csv")
+
+    if OUTPUT_JUNC_COUNT:
+        jsb.merge_count_bed_df(
+        df1 = jsb.pd_hdf5_to_count_bed_df(pd_file, 'skipped'),
+        df2 = jsb.NanoSplicer_to_count_bed_df(out_fn+'.bed', 
+                            best_p_thresh = BESTQ_THRESH)
+    ).to_csv(JUNC_BED_FN, header = None, sep = '\t')
 
 def write_err_msg(d, jwr, error_msg):
     '''
@@ -871,7 +879,7 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
                     # fcntl.flock(f,fcntl.LOCK_UN)
                 f.close()
 
-                if JWR_BED:
+                if JWR_BED and np.max(segment_Si) > BED_SIQ:
                     junc_start, junc_end =\
                          candidate_tuples[np.argmax(post_prob_prior)]
 
