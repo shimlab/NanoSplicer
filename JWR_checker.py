@@ -280,6 +280,7 @@ def main():
     d = pd.concat([x.result() for x in futures])
 
     d.to_hdf(param.outfile, 'data')
+    pd.DataFrame([]).to_hdf(param.outfile, 'skipped')
     
     # output csv file if required
     if param.output_csv:
