@@ -87,7 +87,7 @@ Subset the result from the JWR_checker. Based on our performance assessment, JWR
 Usage: python JWR_subset.py [OPTIONS] <input file: hdf5 output from JWR_checker> <output file: hdf5>
 Options:
     -h/--help       Print this help text
-    --bset_JAQ      A value from 0-1, only JWRs with a junction alignment quality (JAQ)
+    --JAQ_thres     A value from 0-1, only JWRs with a junction alignment quality (JAQ)
                      at or below the specified value will be retained <default: 0.9>
     --chrID         Target a specific chromosome, chrID should match
                         the chromosome name in the BAM
@@ -98,7 +98,7 @@ Options:
 ```
 ### Example: subset the JWRs at a specified genomic location to retain only those with a JAQ <=0.8
 ``` 
-python3 JWR_checker.py –-chrID=chr1 –-genome-loc=5296679-5297165 --best_JAQ=0.8  --output_csv input.h5 output.h5
+python3 JWR_checker.py –-chrID=chr1 –-genome-loc=5296679-5297165 --JAQ_thres=0.8  --output_csv input.h5 output.h5
 ```
 
 ## NanoSplicer.py

@@ -17,7 +17,7 @@ class JWR_subset_param:
         try: 
             opts, args = getopt.getopt(arg[1:],"h",
                         ["help", 
-                         "best_JAQ=",
+                         "JAQ_thres=",
                          "chrID=",
                          "genome-loc=",
                          "output_csv"])
@@ -35,7 +35,7 @@ class JWR_subset_param:
             if opt in ("-h", "--help"):
                 self.print_help()
                 sys.exit(0)
-            elif opt in ("--best_JAQ"):
+            elif opt in ("--JAQ_thres"):
                 self.best_jaq = float(arg)
             elif opt == "--chrID":
                 self.chrID = arg
@@ -62,7 +62,7 @@ class JWR_subset_param:
         Usage: python {} [OPTIONS] <input file: hdf5 output from JWR_checker> <output file: hdf5>
         Options:
             -h/--help       Print this help text
-            --bset_JAQ      A value from 0-1, only JWRs with a junction alignment quality (JAQ)
+            --JAQ_thres     A value from 0-1, only JWRs with a junction alignment quality (JAQ)
                             at or below the specified value will be retained <default: 0.9>
             --chrID         Target a specific chromosome, chrID should match
                                 the chromosome name in the BAM
@@ -92,7 +92,7 @@ def main():
     else:
         d.to_hdf(param.output_h5, 'data')
     
-    print('\n\nJWR_subset select {} out of {} JWRs\n\n'.format(len(d), original_total))
+    print('\n\nJWR_subset select {} out of {} JWRs\n\n'.format(len(d[d.JAQ <= param.best_jaq]), original_total))
 
     if param.output_csv:
         d.to_csv(param.output_h5 + ".csv")
