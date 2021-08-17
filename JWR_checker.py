@@ -104,7 +104,7 @@ class JWR_class:
                 if self.ts == '-':
                     self.ts = '+'
         except:
-            ts = None
+            self.ts = None
     def get_JAQ(self, half_motif_size=25):
         '''
         Report the junction alignment quality
