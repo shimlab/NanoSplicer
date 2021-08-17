@@ -99,7 +99,7 @@ def find_candidate(Interval_list, window=10, min_primary = 0,
     return candidate_boundaries
 
 def canonical_site_finder(aligned_seg, candidate_Interval, ref_FastaFile,
-                              AlignmentFile, window, chrID):
+                               window, chrID):
     '''
         Generate candidate motif given the position of intron boundary.
         Input:
@@ -107,7 +107,7 @@ def canonical_site_finder(aligned_seg, candidate_Interval, ref_FastaFile,
                 tuple of intron boundary position
             ref_FastaFile:
                 pysam.Fastafile class read from reference genom
-            AlignmentFile:
+            aligned_seg:
                 pysam.AlignmentFile class read from bam/sam file
             window:
                 size of window in which NanoSplicer search for the candidate
@@ -118,8 +118,8 @@ def canonical_site_finder(aligned_seg, candidate_Interval, ref_FastaFile,
     
     # check determined transcript direction (by minimap2)
     try:
-        ts = AlignmentFile.get_tag("ts")
-        if AlignmentFile.is_reverse:
+        ts = aligned_seg.get_tag("ts")
+        if aligned_seg.is_reverse:
             if ts == '+':
                 ts = '-'
             if ts == '-':

@@ -437,7 +437,7 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
         # get candidate motifs
             # find GT-AG pattern in a window nearby
         candidate_tuples = canonical_site_finder(read, jwr.loc, 
-                                          ref_FastaFile, AlignmentFile, 
+                                          ref_FastaFile, 
                                           window, jwr.chrID)
 
         if jwr.loc not in candidate_tuples:

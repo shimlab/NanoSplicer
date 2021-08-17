@@ -111,6 +111,7 @@ class JWR_class:
         '''
         junction_cigar = \
             self.get_junction_cigar(half_motif_size=25)
+        print(junction_cigar)
         junction_alignment_quality =\
             self.get_junc_map_quality(junction_cigar)
         return junction_alignment_quality
@@ -134,14 +135,15 @@ class JWR_class:
                     and i != 'N':
                 junction_cigar1 +=  i
             if  ref_index >= junc1_rel_read_start \
-                    and min(junc2_rel_read_start + half_motif_size,
+                    and ref_index < min(junc2_rel_read_start + half_motif_size,
                         self.reference_end - self.reference_start) \
                     and i != 'N':
-                junction_cigar1 +=  i
+                junction_cigar2 +=  i
             if ref_index >= min(junc2_rel_read_start + half_motif_size,
                                     self.reference_end - self.reference_start):
                 break
-        return junction_cigar1[-25:] + junction_cigar1[:25]
+                
+        return junction_cigar1[-25:] + junction_cigar2[:25]
     def get_junc_map_quality(self,cigar):
         '''
         The junc map quality is simply as the proportion of 'M's within the cigar string
