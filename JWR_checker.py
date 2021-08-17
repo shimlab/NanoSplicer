@@ -111,7 +111,6 @@ class JWR_class:
         '''
         junction_cigar = \
             self.get_junction_cigar(half_motif_size=25)
-        print(junction_cigar)
         junction_alignment_quality =\
             self.get_junc_map_quality(junction_cigar)
         return junction_alignment_quality

@@ -158,7 +158,7 @@ class NanoSplicer_param:
                 -i      .bam/.sam file (required)
                 -f      path to fast5s (required)
                 -r      Genome reference file (required)
-                -o      output filename <default: 'NanoSplicer_out.tsv'>
+                -o      Prefix for output files <default: './output'>
             For developer:
                 -T      Number of events trimmed from scrappie model <default: 0>
                 -t      Number of bases trimmed from raw signam, the raw samples are
@@ -179,7 +179,7 @@ def parse_arg():
             -i      .bam/.sam file (required)
             -f      path to fast5s (required)
             -r      Genome reference file (required)
-            -o      output filename <default: 'NanoSplicer_out.tsv'>
+            -o      Prefix for output files <default: './output'>
         For developer:
             -T      Number of events trimmed from scrappie model <default: 0>
             -t      Number of bases trimmed from raw signam, the raw samples are
@@ -294,6 +294,12 @@ def main():
         bandwidth, trim_model, trim_signal, \
         flank_size, window, pd_file =  parse_arg()
 
+    # output filenames
+    error_fn = out_fn + '_error_summary.tsv'
+    prob_table_fn = out_fn + '_prob_table.tsv'
+    jwr_bed_fn = out_fn + '_jwr.bed'
+    support_bed_fn = out_fn + '_junc_support.bed'
+
     # check file exist
     if os.path.isfile(out_fn):
         helper.err_msg("File '{}' exists, please re-try by specify another output filename or remove the existing file.".format(out_fn)) 
@@ -304,7 +310,7 @@ def main():
 
     # creat empty file will header
     else:
-        f = open(out_fn, "w")
+        f = open(prob_table_fn, "w")
         f.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
                                             'read_id',
                                             'reference_name',
@@ -344,19 +350,20 @@ def main():
                                 trim_model, 
                                 trim_signal,
                                 bandwidth,
-                                out_fn) for f in fast5_paths]
+                                prob_table_fn, 
+                                jwr_bed_fn) for f in fast5_paths]
     
     for future in as_completed(futures):   
         pbar.update(1)
     
-    pd.concat([x.result() for x in futures]).to_csv("error_summary.csv")
+    pd.concat([x.result() for x in futures]).to_csv(error_fn)
 
     if OUTPUT_JUNC_COUNT:
         jsb.merge_count_bed_df(
         df1 = jsb.pd_hdf5_to_count_bed_df(pd_file, 'skipped'),
         df2 = jsb.NanoSplicer_to_count_bed_df(out_fn+'.bed', 
                             best_p_thresh = BESTQ_THRESH)
-    ).to_csv(JUNC_BED_FN, header = None, sep = '\t')
+    ).to_csv(support_bed_fn, header = None, sep = '\t')
 
 def write_err_msg(d, jwr, error_msg):
     '''
@@ -375,7 +382,7 @@ def write_err_msg(d, jwr, error_msg):
 # running a single process 
 def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile, 
                     window, flank_size, trim_model, trim_signal,
-                    bandwidth, output_file):
+                    bandwidth, prob_table_fn, jwr_bed_fn):
     '''
     Description:
         Run a single process within a certain multi-read fast5
@@ -845,7 +852,7 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
                 segment_Si = [np.mean(x) for x in even_logL_list]
                 worst_even_logL_list = [sorted(x)[0] for x in even_logL_list]
 
-                f = open(output_file, "a")
+                f = open(prob_table_fn, "a")
                 #fcntl.flock(f,fcntl.LOCK_EX)
                 # f.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
                 #     jwr.id,
@@ -892,8 +899,9 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
                                 ts = '+'
                     except:
                         ts = None
-                    
-                    f_bed = open(output_file+'.bed', "a")
+                
+
+                    f_bed = open(jwr_bed_fn, "a")
                     
                     best_q = np.max(post_prob_prior)
                     bed_col =\
