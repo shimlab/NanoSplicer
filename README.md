@@ -111,7 +111,7 @@ Options:
     -i      .bam/.sam file (required)
     -f      path to fast5s (required)
     -r      Genome reference file (required)
-    -o      output filename <default: 'NanoSplicer_out'>
+    -o      Prefix for output files <default: './output'>
 For developer only:
     -T      Number of events trimmed from scrappie model <default: 2>
     -t      Number of bases trimmed from raw signal, the raw samples are

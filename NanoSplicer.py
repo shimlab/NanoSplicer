@@ -361,7 +361,7 @@ def main():
     if OUTPUT_JUNC_COUNT:
         jsb.merge_count_bed_df(
         df1 = jsb.pd_hdf5_to_count_bed_df(pd_file, 'skipped'),
-        df2 = jsb.NanoSplicer_to_count_bed_df(out_fn+'.bed', 
+        df2 = jsb.NanoSplicer_to_count_bed_df(jwr_bed_fn, 
                             best_p_thresh = BESTQ_THRESH)
     ).to_csv(support_bed_fn, header = None, sep = '\t')
 
