@@ -101,7 +101,7 @@ class JWR_class:
             if read.is_reverse:
                 if self.ts == '+':
                     self.ts = '-'
-                if self.ts == '-':
+                elif self.ts == '-':
                     self.ts = '+'
         except:
             self.ts = None

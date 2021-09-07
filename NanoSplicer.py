@@ -895,7 +895,7 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
                         if read.is_reverse:
                             if ts == '+':
                                 ts = '-'
-                            if ts == '-':
+                            elif ts == '-':
                                 ts = '+'
                     except:
                         ts = None
