@@ -1052,7 +1052,7 @@ def sd_from_tombo(tombo_results, std_ref, read_seq):
         tombo_results.raw_signal[tombo_results.segs[i]:tombo_results.segs[i+1]])
         for i in range(len(tombo_results.segs) - 1)])
     expected_means, _ = std_ref.get_exp_levels_from_seq(read_seq, rev_strand=False)
-    return np.std(expected_means - med_seg)
+    return np.sqrt(np.sum((expected_means - med_seg)**2)/(len(expected_means) - 1))
 
 def find_candidate_middle_pos(squiggle_match):
     '''
