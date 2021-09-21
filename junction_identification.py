@@ -1,9 +1,20 @@
+'''
+
+
+'''
 import pysam
 import intervaltree
 from intervaltree import IntervalTree
 import re
 import itertools
 import numpy as np
+
+# candidate class
+class candidate:
+    def __init__(self, chrID, loc):
+        self.chrID = chrID
+        self.loc = loc
+
 
 # read .bam file
 def get_intron_tree(pysamAlignment, chrID):
@@ -41,7 +52,6 @@ def get_intron_tree(pysamAlignment, chrID):
         count += 1 
         if count < 0:
             break
-
 # get alignment given genome pos
 def find_candidate(Interval_list, window=10, min_primary = 0, 
                    min_support=0, secondary_thres=0.0, primary_thres=1.0):
@@ -249,12 +259,3 @@ def find_junctions(intron_tree, window = 10):
 	for l in split_by_begin:
 		output_list += split_by_end(l)
 	return output_list
-
-
-
-
-def main():
-    return None
-
-if __name__ == "__main__":
-    main()

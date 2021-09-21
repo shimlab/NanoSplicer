@@ -267,3 +267,7 @@ def err_msg(msg):
 	CEND = '\033[0m'
 	print(CRED + msg + CEND)	
 
+def warning_msg(msg):
+	CRED = '\033[93m'
+	CEND = '\033[0m'
+	print(CRED + msg + CEND)	

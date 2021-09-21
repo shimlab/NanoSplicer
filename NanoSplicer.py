@@ -71,6 +71,7 @@ from scipy.stats.mstats import theilslopes
 import helper
 from junction_identification import find_candidate, canonical_site_finder, \
                                                     candidate_motif_generator
+from junc_annotation import GetAnnoFromBed
 from dtw import dtw
 import junction_support_bed as jsb
 
@@ -180,6 +181,9 @@ def parse_arg():
             -f      path to fast5s (required)
             -r      Genome reference file (required)
             -o      Prefix for output files <default: './output'>
+            -a      (optional) Genome annotation in BED12 format. If provided, 
+                    NanoSplicer will include annotated splice junction as candidate
+                    with highest preference level. 
         For developer:
             -T      Number of events trimmed from scrappie model <default: 0>
             -t      Number of bases trimmed from raw signam, the raw samples are
@@ -194,11 +198,12 @@ def parse_arg():
     argv = sys.argv
     
     try: 
-        opts, args = getopt.getopt(argv[1:],"hi:f:r:o:T:t:ab:F:w:c:",
+        opts, args = getopt.getopt(argv[1:],"hi:f:r:o:T:t:b:F:w:c:a:",
                     ["help","input_alignment=","input_fast5_dir=",
                     "genome_ref=","output_path=", "trim_model=",
                     "trim_signal=","dtw_adj","bandwidth=",
-                    "flank_size=", "window=", "config_file="])
+                    "flank_size=", "window=", "config_file=", 
+                    "annotation_bed="])
     except getopt.GetoptError:
         helper.err_msg("Error: Invalid argument input") 
         print_help()
@@ -221,6 +226,7 @@ def parse_arg():
     # DEFAULT VALUE
     alignment_file, fast5_dir, genome_ref = None, None, None
     out_fn = OUTPUT_FILENAME
+    anno_fn = None
     trim_signal = 6
     trim_model = 0
     dtw_adj = False
@@ -241,19 +247,21 @@ def parse_arg():
         elif opt in ("-o", "--output_path"):
             out_fn = arg
         elif opt in ("-T", "--trim_model"):
-           trim_model = int(arg)
+            trim_model = int(arg)
         elif opt in ("-t", "--trim_signal"):
-           trim_signal = int(arg)
-        elif opt in ("-a", "--dtw_adj"):
-           dtw_adj = True
+            trim_signal = int(arg)
+        # elif opt in ("-a", "--dtw_adj"):
+        #     dtw_adj = True
         elif opt in ("-b", "--bandwidth"):
-           bandwidth = float(arg)
+            bandwidth = float(arg)
         elif opt in ("-F", "--flank_size"):
-           flank_size = int(arg)
+            flank_size = int(arg)
         elif opt in ("-w", "--window"):
-           window = int(arg)
+            window = int(arg)
         elif opt in ("-c", "--config_file"):
-           config_file = str(arg)
+            config_file = str(arg)
+        elif opt == "-a":
+            anno_fn = arg
 
     # import global variable from config file 
     mdl = importlib.import_module(config_file)
@@ -272,8 +280,8 @@ def parse_arg():
     
     # check input
     if not alignment_file or not fast5_dir or not genome_ref:
-        helper.err_msg("Error:Missing input files.") 
-        sys.exit(1)
+        helper.err_msg("Error: Missing input files.") 
+        sys.exit(1)        
 
     # choose the version of dtw (sum: minimize the sum of cost for the path)
     def dtw_local_alignment(candidate_squiggle, junction_squiggle, 
@@ -286,13 +294,13 @@ def parse_arg():
     
     return fast5_dir, out_fn, alignment_file, genome_ref, \
             bandwidth, trim_model, trim_signal, flank_size, \
-             window, pd_file
+             window, pd_file, anno_fn
 
 def main():
     # parse command line argument
     fast5_dir, out_fn, alignment_file, genome_ref, \
         bandwidth, trim_model, trim_signal, \
-        flank_size, window, pd_file =  parse_arg()
+        flank_size, window, pd_file, anno_fn =  parse_arg()
 
     # output filenames
     error_fn = out_fn + '_error_summary.tsv'
@@ -327,7 +335,13 @@ def main():
 
     # import data
     jwr_df = pd.read_hdf(pd_file, key = 'data')
-    
+
+    # import annotation bed file
+    if anno_fn:
+        anno_df = GetAnnoFromBed(anno_fn)
+    else:
+        anno_df = []
+
     # get fast5 filenames recursively
     fast5_paths = Path(fast5_dir).rglob('*.fast5') # iterator
     fast5_paths = list(fast5_paths)
@@ -351,9 +365,10 @@ def main():
                                 trim_signal,
                                 bandwidth,
                                 prob_table_fn, 
-                                jwr_bed_fn) for f in fast5_paths]
+                                jwr_bed_fn,
+                                anno_df) for f in fast5_paths]
     
-    for future in as_completed(futures):   
+    for future in as_completed(futures):
         pbar.update(1)
     
     pd.concat([x.result() for x in futures]).to_csv(error_fn)
@@ -382,7 +397,7 @@ def write_err_msg(d, jwr, error_msg):
 # running a single process 
 def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile, 
                     window, flank_size, trim_model, trim_signal,
-                    bandwidth, prob_table_fn, jwr_bed_fn):
+                    bandwidth, prob_table_fn, jwr_bed_fn,anno_df):
     '''
     Description:
         Run a single process within a certain multi-read fast5
@@ -447,6 +462,20 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
                                           ref_FastaFile, 
                                           window, jwr.chrID)
 
+        if len(anno_df):
+            # annotation in a window nearby
+            anno_candidate_tuples = \
+                list(anno_df[
+                    (anno_df.chrID ==  jwr.chrID) &
+                    (np.abs(anno_df.site1 - jwr.loc[0]) <= window) & 
+                    (np.abs(anno_df.site2 - jwr.loc[1]) <= window)
+                        ].apply(lambda row: (row.site1, row.site2), axis = 1))
+            # get union of GT-AG candidate and annotation candidate
+            candidate_tuples =\
+                    list(set(candidate_tuples) | set(anno_candidate_tuples))
+        else:
+            anno_candidate_tuples = []
+
         if jwr.loc not in candidate_tuples:
             candidate_tuples.append(jwr.loc)
 
@@ -456,6 +485,11 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
                                         flank_size, ref_FastaFile,
                                         pattern_preference = PATTERN_PREFERENCE)
 
+        # adjust annotated junction (if provided)
+        if len(anno_candidate_tuples):
+            for junc in anno_candidate_tuples:
+                candidate_preference[candidate_tuples.index(junc)] = 3
+        
         candidate_preference = np.array(candidate_preference)
         
         if not candidate_motif:# or len(candidate_motif) == 1:  
@@ -497,8 +531,8 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
      
         # get junction squiggle
         junction_squiggle = get_junc_squiggle(tombo_results, 
-                            tombo_start_clip, read_length, 
-                            read, jwr_loc_read, spike_thres=SPIKE_THRES)
+                                tombo_start_clip, read_length, 
+                                read, jwr_loc_read, spike_thres=SPIKE_THRES)
         
         if not len(junction_squiggle):
             failed_jwr = write_err_msg(failed_jwr, jwr, 
