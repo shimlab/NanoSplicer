@@ -4,7 +4,7 @@ junction_identification.py after testing).
 '''
 import pandas as pd
 import sys
-
+from tqdm import tqdm
 def GetAnnoFromBed(anno_fn):
     '''
     Read junction annotation in BED format (probability merge this script into the 
@@ -19,14 +19,19 @@ def GetAnnoFromBed(anno_fn):
     df = pd.DataFrame(columns=['chrID','strand','site1','site2'])
 
     with open(anno_fn, 'r') as bed_f:
-        for line in bed_f:
+        chrID_ls, strand_ls, site1_ls, site2_ls = [], [], [], []
+        for line in tqdm(bed_f):
             chrom, strand, splice_sites, *_ = ReadBedLine(line)
             for x,y in splice_sites:
-                df = df.append(pd.Series({
-                    'chrID' : chrom,
-                    'strand': strand,
-                    'site1': x,
-                    'site2': y}), ignore_index = True)
+                chrID_ls.append(chrom)
+                strand_ls.append(strand)
+                site1_ls.append(x)
+                site2_ls.append(y)
+
+    df = pd.DataFrame({'chrID' : chrID_ls,
+                        'strand': strand_ls,
+                        'site1': site1_ls,
+                        'site2': site2_ls})
     return df.drop_duplicates()
 
 
@@ -55,16 +60,4 @@ def ReadBedLine(bedline):
     splice_sites = \
         [(blockEnds[i], blockStarts[i + 1]) for i in range(int(blockCount) - 1)]
 
-    junction_pos = []
-    for start_pos in blockStarts:
-        exon_transcript_pos = start_pos - int(chromStart)
-        for intron_pos in splice_sites:
-            if start_pos >=  intron_pos[1]:
-                exon_transcript_pos -= intron_pos[1] - intron_pos[0]
-        junction_pos.append(exon_transcript_pos)
-    
-    junction_pos = junction_pos[1:]
-
-    transcript_length = sum(blockSizes)
-
-    return chrom, strand, splice_sites, junction_pos, transcript_length
+    return chrom, strand, splice_sites
