@@ -122,7 +122,7 @@ def canonical_site_finder(aligned_seg, candidate_Interval, ref_FastaFile,
         if aligned_seg.is_reverse:
             if ts == '+':
                 ts = '-'
-            if ts == '-':
+            elif ts == '-':
                 ts = '+'
     except:
         ts = None
