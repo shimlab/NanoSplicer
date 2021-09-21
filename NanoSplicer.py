@@ -464,12 +464,17 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
 
         if len(anno_df):
             # annotation in a window nearby
-            anno_candidate_tuples = \
-                list(anno_df[
+            temp_d = anno_df[
                     (anno_df.chrID ==  jwr.chrID) &
                     (np.abs(anno_df.site1 - jwr.loc[0]) <= window) & 
                     (np.abs(anno_df.site2 - jwr.loc[1]) <= window)
-                        ].apply(lambda row: (row.site1, row.site2), axis = 1))
+                        ]
+            if len(temp_d):
+                anno_candidate_tuples = \
+                    list(temp_d.apply(
+                          lambda row: (row.site1, row.site2), axis = 1))
+            else:
+                anno_candidate_tuples = []
             # get union of GT-AG candidate and annotation candidate
             candidate_tuples =\
                     list(set(candidate_tuples) | set(anno_candidate_tuples))
