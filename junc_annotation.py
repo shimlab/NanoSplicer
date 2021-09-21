@@ -46,7 +46,7 @@ def ReadBedLine(bedline):
     bedline = bedline.strip().split()
     chrom, chromStart, chromEnd, name, score, strand, thickStart,\
      thickEnd, itemRgb, blockCount, blockSizes,\
-      blockStarts = bedline
+      blockStarts, *_ = bedline
     
     blockSizes = [int(x) for x in blockSizes.strip(',').split(',')]
     blockStarts =[int(chromStart) + int(x) for x in blockStarts.strip(',').split(',')]
