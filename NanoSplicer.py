@@ -38,12 +38,12 @@ import importlib
 import textwrap
 import pandas as pd
 import matplotlib 
-
+# matplotlib.rcParams.update(matplotlib.rcParamsDefault)
 # output in .svg format
 matplotlib.use('svg')
 new_rc_params = {'text.usetex': False,
-"svg.fonttype": 'none'
-}
+    "svg.fonttype": 'none'
+    }
 matplotlib.rcParams.update(new_rc_params)
 import matplotlib.pyplot as plt
 import concurrent.futures
@@ -183,7 +183,7 @@ def parse_arg():
             -o      Prefix for output files <default: './output'>
             -a      (optional) Genome annotation in BED12 format. If provided, 
                     NanoSplicer will include annotated splice junction as candidate
-                    with highest preference level. 
+                    with highest preference level.
         For developer:
             -T      Number of events trimmed from scrappie model <default: 0>
             -t      Number of bases trimmed from raw signam, the raw samples are
@@ -192,6 +192,12 @@ def parse_arg():
                         window <default: 20>
             -w      Candidate searching window size <default: 10>
             -c      Config filename <default: 'config'>
+            --plot_alignment
+                    output figures including the alignments between each junction
+                    squiggle to its candidate squiggles
+            --plot_LR
+                    output likelihood ratio contribution figures, which show how each
+                    segment of the junction squiggle contributes to the likelihood ratio
         '''.format(argv[0])
         print(textwrap.dedent(help_message))
     
@@ -203,7 +209,7 @@ def parse_arg():
                     "genome_ref=","output_path=", "trim_model=",
                     "trim_signal=","dtw_adj","bandwidth=",
                     "flank_size=", "window=", "config_file=", 
-                    "annotation_bed="])
+                    "annotation_bed=", "plot_alignment", "plot_LR"])
     except getopt.GetoptError:
         helper.err_msg("Error: Invalid argument input") 
         print_help()
@@ -226,6 +232,8 @@ def parse_arg():
     # DEFAULT VALUE
     alignment_file, fast5_dir, genome_ref = None, None, None
     out_fn = OUTPUT_FILENAME
+    plot_alignment = PLOT_ALIGNMENT
+    plot_LR = PLOT_LR
     anno_fn = None
     trim_signal = 6
     trim_model = 0
@@ -262,6 +270,11 @@ def parse_arg():
             config_file = str(arg)
         elif opt == "-a":
             anno_fn = arg
+        elif opt == "--plot_alignment":
+            plot_alignment = True
+        elif opt == "--plot_LR":
+            plot_LR = True
+        
 
     # import global variable from config file 
     mdl = importlib.import_module(config_file)
@@ -270,7 +283,6 @@ def parse_arg():
     else:
         names = [x for x in mdl.__dict__ if not x.startswith("_")]
     globals().update({k: getattr(mdl, k) for k in names})
-
 
     if not args:
         helper.err_msg("Error: Invalid argument input")   
@@ -294,13 +306,14 @@ def parse_arg():
     
     return fast5_dir, out_fn, alignment_file, genome_ref, \
             bandwidth, trim_model, trim_signal, flank_size, \
-             window, pd_file, anno_fn
+             window, pd_file, anno_fn, plot_alignment, plot_LR
 
 def main():
     # parse command line argument
     fast5_dir, out_fn, alignment_file, genome_ref, \
         bandwidth, trim_model, trim_signal, \
-        flank_size, window, pd_file, anno_fn =  parse_arg()
+        flank_size, window, pd_file, anno_fn, \
+        plot_alignment, plot_LR =  parse_arg()
 
     # output filenames
     error_fn = out_fn + '_error_summary.tsv'
@@ -308,13 +321,22 @@ def main():
     jwr_bed_fn = out_fn + '_jwr.bed'
     support_bed_fn = out_fn + '_junc_support.bed'
 
+    # create directory if not exit
+    directory = os.path.dirname(prob_table_fn)
+    Path(directory).mkdir(parents=True, exist_ok=True)
+
+
     # check file exist
-    if os.path.isfile(out_fn):
-        helper.err_msg("File '{}' exists, please re-try by specify another output filename or remove the existing file.".format(out_fn)) 
+    if os.path.isfile(prob_table_fn):
+        helper.err_msg("File '{}' exists, please re-try by specify another output filename or remove the existing file.".format(prob_table_fn)) 
         sys.exit(1)
-    if os.path.isfile(out_fn+'.bed'):
-        helper.err_msg("File '{}' exists, please re-try by specify another output filename or remove the existing file.".format(out_fn+'.bed')) 
+    if os.path.isfile(jwr_bed_fn):
+        helper.err_msg("File '{}' exists, please re-try by specify another output filename or remove the existing file.".format(jwr_bed_fn)) 
         sys.exit(1)
+    
+
+    
+
 
     # creat empty file will header
     else:
@@ -366,7 +388,9 @@ def main():
                                 bandwidth,
                                 prob_table_fn, 
                                 jwr_bed_fn,
-                                anno_df) for f in fast5_paths]
+                                anno_df,
+                                plot_alignment,
+                                plot_LR) for f in fast5_paths]
     
     for future in as_completed(futures):
         pbar.update(1)
@@ -395,15 +419,16 @@ def write_err_msg(d, jwr, error_msg):
     return d
 
 # running a single process 
-def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile, 
+def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile, 
                     window, flank_size, trim_model, trim_signal,
-                    bandwidth, prob_table_fn, jwr_bed_fn,anno_df):
+                    bandwidth, prob_table_fn, jwr_bed_fn, anno_df,
+                    plot_alignment, plot_LR):
     '''
     Description:
         Run a single process within a certain multi-read fast5
     Input:
         fast5_path:     path to the target fast5 (multi-read version only)
-        plot_df:  subset of the NanoSplcier output to be plotted(set of splice junctions to be test, it is not the 
+        jwr_df:  subset of the NanoSplcier output to be plotted(set of splice junctions to be test, it is not the 
                             splice junction candidates but the splice junctions to
                             match the junction within read to be queried)                            
         AlignmentFile:  BAM filename
@@ -441,7 +466,7 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
     failed_jwr = pd.DataFrame(columns = ['id', 'chrID' ,'loc', 'JAQ', 'error_msg'])    
 
     # loop though each row in output_df
-    for jwr in plot_df.itertuples():
+    for jwr in jwr_df.itertuples():
         if jwr.id not in reads_in_file:
             continue
         
@@ -586,7 +611,13 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
             #cum_path[j] = cum_matrix[path[:, 0], path[:, 1]]
 
             # Alignment plot
-            if PLOT and j == num_of_cand - 1:
+            if plot_alignment and j == num_of_cand - 1:
+                preference_text_dict = {
+                    0: "non GT-AG",
+                    1: "GT(-)-AG(-)",
+                    2: "GT(+)-AG(-) or GT(-)-AG(+)",
+                    3: "GT(+)-AG(+) or annotated"
+                }
                 # minimap2 candidate as reference
                 matched_candidate_ref = squiggle_match[index_m]
                 squiggle_match_list = [squiggle_match[x] for x in range(num_of_cand)]
@@ -670,27 +701,36 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
                     ax.legend(bbox_to_anchor=(1.01, 1), loc='upper left', fontsize = 10)
                     
                     #figure title
-                    if False:
+                    if True:
                         ax.set_title('Log LR: {:.2f}, average Log-Lik: {:.2f}, post probability: {:.3f}, candidate_preference: {}, post probability(seq prior ratio = 9): {:.3f} '.format(
                             dist_seg_LR[cand], 
                             np.mean(
                                 even_wise_log_likelihood(junction_squiggle, squiggle_match_list[cand], max_z=MAX_Z)),
                             post_prob[cand], 
-                            candidate_preference[cand], 
+                            preference_text_dict[candidate_preference[cand]], 
                             post_prob_prior[cand]), y=1.0, pad=-14)
+
                 fig.suptitle('minimap2 candidate likelihood: {:.2f}, average Log-Lik: {:.2f}, post probability: {:.3f}, candidate_preference: {}, post probability(seq prior ratio = 9): {:.3f}'.format(
                         dist_seg_LR[index_m], 
                         np.mean(
                             even_wise_log_likelihood(junction_squiggle, squiggle_match_list[index_m], max_z=MAX_Z)),
                         post_prob[index_m],
-                        candidate_preference[index_m], 
+                        preference_text_dict[candidate_preference[index_m]], 
                         post_prob_prior[index_m]))
 
-                fig.subplots_adjust(right=0.8)
-                fig.savefig("{}_median_pairwise.svg".format(read.qname), format = 'svg')
+                #fig.subplots_adjust(right=0.8)
 
+                fig_dir = os.path.dirname(prob_table_fn)
+                fig.savefig(
+                    os.path.join(
+                        fig_dir, "{}_median_pairwise.png".format(read.qname)), 
+                                format = 'png')
+
+                # fig.savefig(
+                #     os.path.join(
+                #         fig_dir, "{}_median_pairwise.png".format(read.qname)))
             # LR contribution plot
-            if PLOT_LR and j == num_of_cand - 1:
+            if plot_LR and j == num_of_cand - 1:
 
                 # minimap2 candidate as reference
                 matched_candidate_ref = squiggle_match[index_m]
@@ -699,8 +739,6 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
                     [median_denoise(junction_squiggle, [matched_candidate_ref, x]) for x in squiggle_match_list]
                 segment_list = \
                     [get_distinguishing_segment(matched_candidate_ref, [x]) for x in squiggle_match_list]
-
-                print(2)
 
                 # LR calculation (distinguishing segment only)
                 dist_seg_LR = []
@@ -722,7 +760,6 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
                 post_prob = rel_to_ref_LR/sum(rel_to_ref_LR)
                 post_prob_prior = post_prob * (PRIOR_RATIO **candidate_preference)
                 post_prob_prior = post_prob_prior/sum(post_prob_prior)
-                print(3)
                 fig = plt.figure(figsize=(20,5 * num_of_cand))
                 subplot_index = 0
                 for cand in range(num_of_cand):
@@ -781,7 +818,10 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
                 fig.suptitle('minimap2 candidate likelihood: {:.2f}, post probability: {:.3f}, candidate_preference: {}, post probability(seq prior ratio = 9): {:.3f}'.format(
                         dist_seg_LR[index_m], post_prob[index_m],candidate_preference[index_m], post_prob_prior[index_m]))
 
-                fig.savefig("{}_LR_median_pairwise.png".format(read.qname))
+                fig_dir = os.path.dirname(prob_table_fn)
+                fig.savefig(
+                    os.path.join(fig_dir, "{}_LR_median_pairwise.png".format(
+                                read.qname)))
 
                 
                 #plot cumulative contribution of LR of each data point
@@ -835,7 +875,11 @@ def run_multifast5(fast5_path, plot_df, AlignmentFile, ref_FastaFile,
                     strand = 1
                 else:
                     strand = 0
-                fig.savefig("{}_fig{}_{}.png".format(output_prefix,read.qname, j))
+                
+
+                fig_dir = os.path.dirname(prob_table_fn)
+                fig.savefig(
+                    os.path.join(fig_dir,"{}_fig{}_{}.png".format(output_prefix,read.qname, j)))
                 plt.close()
 
             # NanoSplicer plot

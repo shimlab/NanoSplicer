@@ -33,7 +33,7 @@ PRIOR_RATIO = 9
 
 # output
 SAVE_DATA = False
-PLOT = False
+PLOT_ALIGNMENT = False
 PLOT_LR = False
 RESULT = True
 OUTPUT_FILENAME = './output'
