@@ -4,8 +4,12 @@ junction_identification.py after testing).
 '''
 import pandas as pd
 import sys
+import os
 from tqdm import tqdm
-def GetAnnoFromBed(anno_fn):
+import pysam
+
+import helper
+def GetAnnoFromBed(anno_fn, GTAG_only = False, ref_FastaFile = ''):
     '''
     Read junction annotation in BED format (probability merge this script into the 
     junction_identification.py after testing).
@@ -31,8 +35,14 @@ def GetAnnoFromBed(anno_fn):
     df = pd.DataFrame({'chrID' : chrID_ls,
                         'strand': strand_ls,
                         'site1': site1_ls,
-                        'site2': site2_ls})
-    return df.drop_duplicates()
+                        'site2': site2_ls}).drop_duplicates()
+    if GTAG_only:
+        GTAG = df.apply(lambda row: check_GTAG(
+                    row.chrID, row.site1, row.site2, 
+                    row.strand, ref_FastaFile), axis = 1)
+        df = df[~GTAG]
+        
+    return df
 
 
 
@@ -61,3 +71,29 @@ def ReadBedLine(bedline):
         [(blockEnds[i], blockStarts[i + 1]) for i in range(int(blockCount) - 1)]
 
     return chrom, strand, splice_sites
+
+
+def check_GTAG(chrID, start, end, strand, ref_FastaFile):
+    '''
+        check the splice junction pattern
+        Retrun:
+            True: if GT-AG
+            False: if not GT-AG
+    '''
+    if not ref_FastaFile:
+        helper.err_msg("Error when checking GT-AG in annotation file: ref_FastaFile is required when GTAG_only=True")
+        sys.exit(1)
+    if not os.path.isfile(ref_FastaFile):
+        helper.err_msg("Error when checking GT-AG in annotation file: {} doesn't exist!".format(ref_FastaFile))
+        sys.exit(1)
+    ref_FastaFile = pysam.FastaFile(ref_FastaFile)
+    splice_pattern =  ref_FastaFile.fetch(
+        chrID, start, start + 2).upper() + \
+        ref_FastaFile.fetch(chrID, end -2, end).upper()
+
+    if strand == '+' and splice_pattern == "GTAG":
+        return True
+    elif strand == '-' and splice_pattern == "CTAC":
+        return True
+    else:
+        return False

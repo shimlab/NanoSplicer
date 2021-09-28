@@ -182,8 +182,12 @@ def parse_arg():
             -r      Genome reference file (required)
             -o      Prefix for output files <default: './output'>
             -a      (optional) Genome annotation in BED12 format. If provided, 
-                    NanoSplicer will include annotated splice junction as candidate
+                    NanoSplicer will include all annotated splice junction as candidate
                     with highest preference level.
+            --non_canonical_annotation
+                    (optional) Genome annotation in BED12 format. If provided, 
+                    NanoSplicer will include annotated non-canonical splice 
+                    junction as candidate with highest preference level.
         For developer:
             -T      Number of events trimmed from scrappie model <default: 0>
             -t      Number of bases trimmed from raw signam, the raw samples are
@@ -209,7 +213,8 @@ def parse_arg():
                     "genome_ref=","output_path=", "trim_model=",
                     "trim_signal=","dtw_adj","bandwidth=",
                     "flank_size=", "window=", "config_file=", 
-                    "annotation_bed=", "plot_alignment", "plot_LR"])
+                    "annotation_bed=", "plot_alignment", "plot_LR", 
+                    "non_canonical_annotation="])
     except getopt.GetoptError:
         helper.err_msg("Error: Invalid argument input") 
         print_help()
@@ -235,6 +240,7 @@ def parse_arg():
     plot_alignment = PLOT_ALIGNMENT
     plot_LR = PLOT_LR
     anno_fn = None
+    non_cano_anno_fn = None
     trim_signal = 6
     trim_model = 0
     dtw_adj = False
@@ -274,7 +280,8 @@ def parse_arg():
             plot_alignment = True
         elif opt == "--plot_LR":
             plot_LR = True
-        
+        elif opt == "--non_canonical_annotation":
+            non_cano_anno_fn = arg        
 
     # import global variable from config file 
     mdl = importlib.import_module(config_file)
@@ -306,14 +313,14 @@ def parse_arg():
     
     return fast5_dir, out_fn, alignment_file, genome_ref, \
             bandwidth, trim_model, trim_signal, flank_size, \
-             window, pd_file, anno_fn, plot_alignment, plot_LR
+             window, pd_file, anno_fn, non_cano_anno_fn, \
+             plot_alignment, plot_LR
 
 def main():
     # parse command line argument
-    fast5_dir, out_fn, alignment_file, genome_ref, \
-        bandwidth, trim_model, trim_signal, \
-        flank_size, window, pd_file, anno_fn, \
-        plot_alignment, plot_LR =  parse_arg()
+    fast5_dir, out_fn, alignment_file, genome_ref, bandwidth, trim_model, \
+        trim_signal, flank_size, window, pd_file, anno_fn, non_cano_anno_fn, \
+        plot_alignment, plot_LR = parse_arg()
 
     # output filenames
     error_fn = out_fn + '_error_summary.tsv'
@@ -334,10 +341,6 @@ def main():
         helper.err_msg("File '{}' exists, please re-try by specify another output filename or remove the existing file.".format(jwr_bed_fn)) 
         sys.exit(1)
     
-
-    
-
-
     # creat empty file will header
     else:
         f = open(prob_table_fn, "w")
@@ -360,9 +363,15 @@ def main():
 
     # import annotation bed file
     if anno_fn:
-        anno_df = GetAnnoFromBed(anno_fn)
+        anno_df = GetAnnoFromBed(anno_fn, ) 
     else:
-        anno_df = []
+        anno_df = pd.DataFrame([])
+
+    if non_cano_anno_fn:
+        anno_df = pd.concat([anno_df, 
+                GetAnnoFromBed(non_cano_anno_fn, 
+                GTAG_only = True, ref_FastaFile = genome_ref)]).drop_duplicates()
+
 
     # get fast5 filenames recursively
     fast5_paths = Path(fast5_dir).rglob('*.fast5') # iterator
@@ -729,6 +738,8 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                 # fig.savefig(
                 #     os.path.join(
                 #         fig_dir, "{}_median_pairwise.png".format(read.qname)))
+
+                plt.close()
             # LR contribution plot
             if plot_LR and j == num_of_cand - 1:
 
@@ -823,7 +834,7 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                     os.path.join(fig_dir, "{}_LR_median_pairwise.png".format(
                                 read.qname)))
 
-                
+                plt.close()
                 #plot cumulative contribution of LR of each data point
                 if False:
                     ax2.plot(cum_path[1] - cum_path[0], 
