@@ -12,7 +12,7 @@ Some example input files can be found at `example/` to run all of the modules be
 
 `JWR_checker.py`: Find junctions within reads (JWRs) from a spliced mapping result (BAM).
 
-`JWR_subset.py`: Subset the result from JWR_checker. Based on our performance assessment, JWRs with high junction alignment quality (JAQ) are usually accurately mapped to their respective splice junctions. This module filters JWRs based on their JAQ, allowing selection of JWRs with lower JAQs that will most benefit from anlaysis with the NanoSplicer module. By default, `JWR_subset.py` selects JWRs with a junction alignment quality of less than 0.9.
+`JWR_subset.py`: Subset the result from JWR_checker. Based on our performance assessment, JWRs with high junction alignment quality (JAQ) are usually accurately mapped to their respective splice junctions. This module filters JWRs based on their JAQ, allowing selection of JWRs with lower JAQs that will most benefit from anlaysis with the NanoSplicer module. By default, `JWR_subset.py` selects JWRs with a junction alignment quality of less than 0.95.
 
 `NanoSplicer.py`: Perform splice junction identification on the `JWR_checker.py` (or `JWR_subset.py` if applied) output. 
 
@@ -45,7 +45,7 @@ required for running NanoSplicer have been packaged into a container and can be 
 ```
 singularity pull NanoSplicer_container.sif docker://youyupei/nanosplicer:v1
 ```
-**For people not familiar with containers**: You can run linux commands within the container by using `singularity shell` or `singularity exec`. These commands automatically bind your home directory to the home directory inside the container, which means everything under `~/` (including the sub-directories) will be accessible without extra steps. If your data are saved in a different directory, you'll need to bind the directory with `-B <local path>:<path in container>` when running `singularity shell` or `singularity exec`. For example, if your data are in `/data`, you need to add `-B /data:/folder_in_container`. Everything in `/data` is then accessible in `/folder_in_container`. You may use the same name for convenience (e.g. `-B /data:/data`). A more formal introduction to singularity can be found at https://sylabs.io/singularity/
+**For people not familiar with containers**: You can run linux commands within the container by using `singularity shell` or `singularity exec`. These commands automatically bind your home directory to the home directory inside the container, which means everything under `~/` (including the sub-directories) will be accessible without extra steps. If your data are saved in a different directory, you'll need to bind the directory with `-B <local path>:<path in container>` when running `singularity shell` or `singularity exec`. For example, if your data are in `/data`, you need to add `-B /data:/folder_in_container`. Everything in `/data` is then accessible in `/folder_in_container`. You may use the same name for convenience (e.g. `-B /data:/data`). A more formal introduction to singularity can be found at https://sylabs.io/singularity/.
 
 # Install
 
