@@ -5,7 +5,7 @@
 Oxford Nanopore sequencing, Transcriptomics, Splice junctions
 
 # Overview
-NanoSplicer utilises the raw ouput from nanopore sequencing (measures of electrical current commonly known as squiggles) to improve the identification of splice junctions. Instead of identifying splice junctions by mapping basecalled reads, nanosplicer compares the squiggle from a read with the predicted squiggles of potential splice junctions to identify the best match and likely junction. Mapped nanopore reads are still required in order to identify the presence of splice junctions for downstream NanoSplicer analysis.     
+NanoSplicer utilises the raw ouput from nanopore sequencing (measures of electrical current commonly known as squiggles) to improve the identification of splice junctions. Instead of identifying splice junctions by mapping basecalled reads, nanosplicer compares the squiggle from a read with the predicted squiggles of potential splice junctions to identify the best match and likely junction. Mapped nanopore reads are still required in order to identify the presence of splice junctions for downstream NanoSplicer analysis. See [You et al. (2021)][NanoSplicer-bioRxiv] for more description of the method.
 
 The program contains 3 modules `JWR_checker.py`, `JWR_subset.py` and `NanoSplicer.py`, which need to be run in order to get the final result. The first and third modules are required. `JWR_subset.py` is optional but recommended and will significantly decrease the run time of `NanoSplicer.py`.
 Some example input files can be found at `example/` to run all of the modules below. Example code is also available at `example/script.sh`.
@@ -152,13 +152,11 @@ The 'NanoSplicer.py' output is a TSV file with 10 columns:
 1. There will be a performance warning when running `JWR_checker` and `JWR_subset`. **The warning can be ignored**. The warning is triggered when data is saved into the HDF5 file. It relates to python objects that can not be directly converted to c-type, causing non-optimal performance of the HDF5 file. 
 2. The progress bar in `NanoSplicer.py` is based on the number of fast5 files that have been processed. If there is only 1 fast5 file being processed (e.g. in `example/fast5/`), the progress bar will be at 0% (0/1 completed) until the run has finished. 
 
-## Contributing authors:
-Yupei You,
-Mike Clark*,
-Heejung Shim*
+## Citing NanoSplicer
 
-## Author affiliations:
-School of Mathematics and Statistics and Melbourne Integrative Genomics, University of Melbourne, Melbourne, Australia
-Deptartment of Anatomy and Physiology, School of Biomedical Sciences, University of Melbourne, Melbourne, Australia
-School of Mathematics and Statistics and Melbourne Integrative Genomics, University of Melbourne, Melbourne, Australia
+If you find NanoSplcier useful for your work, please cite our paper:
 
+> Yupei You, Michael B. Clark, Heejung Shim (2021). *NanoSplicer: Accurate identification of splice
+> junctions using Oxford Nanopore sequencing.* [You et al. (2021)][NanoSplicer-bioRxiv].
+
+[NanoSplicer-bioRxiv]: https://www.biorxiv.org/content/10.1101/2021.10.23.465402v1
