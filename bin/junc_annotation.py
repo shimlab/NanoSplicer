@@ -9,7 +9,39 @@ from tqdm import tqdm
 import pysam
 
 import helper
-def GetAnnoFromBed(anno_fn, GTAG_only = False, ref_FastaFile = ''):
+
+def Mapped_junc(jwr_hdf, min_support, min_JAQ = 0):
+    '''
+    Input:
+        jwr_hdf: HDF5 file from either JWR_checker or JWR_subset. 
+        min_support: minimum number of supporting JWR required
+        min_JAQ: minimum JAQ require for defining a "supporting JWR"
+    Output:
+        pd.DataFrame with columns:
+            1. site1: 5' splice site
+            2. site2: 3' splice site
+        Note: the 5' and 3' is based on the direction of the reference strand,
+        so we always have site1 < site2 
+    '''
+    
+    # get all JWR
+    d = pd.concat([pd.read_hdf(jwr_hdf, key = 'data'), 
+                    pd.read_hdf(jwr_hdf, key = 'skipped')])
+    
+    d = d[d.JAQ >= min_JAQ].groupby(['loc', 'chrID'], as_index = False).count()
+    d = d[d.id >= min_support]
+    return(
+        pd.DataFrame(
+            {   'chrID': d['chrID'],
+                'site1': d['loc'].apply(lambda x: x[0]),
+                'site2': d['loc'].apply(lambda x: x[1])
+            }
+        )
+    )
+
+
+
+def GetJuncFromBed(anno_fn, GTAG_only = False, ref_FastaFile = ''):
     '''
     Read junction annotation in BED format (probability merge this script into the 
     junction_identification.py after testing).
@@ -97,3 +129,4 @@ def check_GTAG(chrID, start, end, strand, ref_FastaFile):
         return True
     else:
         return False
+

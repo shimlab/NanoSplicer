@@ -1,17 +1,13 @@
 '''
-visulisation code design
-
 Input:
     subset of pandas dataframe of JWR to be tested (in HDF5), using key = "data"
 
 Output:
     Results:
-        1. DTW score for both candidate
-        2. Aligned length
-        3. Number of distinguishing point
-        4. log LR contribution from the distinguishing point     
+        Probabilty Table
+        BED file containing corrected JWRs    
     
-    Visulisation:
+    Visulisation (for developer only):
         Alignment figure 1:
             * Align the junction squiggle to the base candidate squiggle and 
             another candidate squiggle
@@ -25,10 +21,10 @@ Output:
             * Highlight distinguishing segment (The definition of distinguishing
             segment is defined in the config file)
     
-    Candidate squiggle and junction squiggle:
+    Candidate squiggle and junction squiggle (for developer only):
         Output CSV files for candidate squiggle and junction squiggle.
 
-Update to the NanoSplicer_seg.py:
+Update to the NanoSplicer.py:
     * Use JWR_checker hdf as input.
     * Default trim model changed to 0.
     * Check the failed JWR.
@@ -71,124 +67,47 @@ from scipy.stats.mstats import theilslopes
 import helper
 from junction_identification import find_candidate, canonical_site_finder, \
                                                     candidate_motif_generator
-from junc_annotation import GetAnnoFromBed
+from junc_annotation import GetJuncFromBed, Mapped_junc
 from dtw import dtw
 import junction_support_bed as jsb
-
-
-class NanoSplicer_param:
-    '''
-    this is not current in use
-    '''
-    def __init__(self, arg = sys.argv):
-        '''
-        1. Read from config file the default param
-        2. Read from commend line input the input files
-        '''
-        
-        argv = sys.argv
-        
-        try: 
-            opts, args = getopt.getopt(argv[1:],"hi:f:r:o:T:t:ab:F:w:c:",
-                        ["help","input_alignment=","input_fast5_dir=",
-                        "genome_ref=","output_path=", "trim_model=",
-                        "trim_signal=","dtw_adj","bandwidth=",
-                        "flank_size=", "window=", "config_file="])
-        except getopt.GetoptError:
-            helper.err_msg("Error: Invalid argument input") 
-            print_help()
-            sys.exit(1)
-
-        # DEFAULT VALUE
-        self.alignment_file, self.fast5_dir, self.genome_ref = None, None, None
-        self.output_path = None
-        self.trim_signal = 6
-        self.trim_model = 0
-        self.dtw_adj = False
-        self.bandwidth = 0.4
-        self.flank_size = 20
-        self.window = 10
-        self.config_file = 'config'
-        
-
-        
-        for opt, arg in opts:
-            if opt in  ("-h", "--help"):
-                print_help()
-                sys.exit(0)
-            elif opt in ("-i", "--input_alignment"):
-                self.alignment_file = arg
-            elif opt in ("-f", "--input_fast5_dir"):
-                self.fast5_dir = arg
-            elif opt in ("-r", "--genome_ref"):
-                self.genome_ref = arg
-            elif opt in ("-o", "--output_path"):
-                self.output_path = arg
-            elif opt in ("-T", "--trim_model"):
-                self.trim_model = int(arg)
-            elif opt in ("-t", "--trim_signal"):
-                self.trim_signal = int(arg)
-            elif opt in ("-a", "--dtw_adj"):
-                self.dtw_adj = True
-            elif opt in ("-b", "--bandwidth"):
-                self.bandwidth = float(arg)
-            elif opt in ("-F", "--flank_size"):
-                self.flank_size = int(arg)
-            elif opt in ("-w", "--window"):
-                self.window = int(arg)
-            elif opt in ("-c", "--config_file"):
-                self.config_file = str(arg)
-
-        # check input 
-        if not alignment_file or not fast5_dir or not genome_ref:
-            helper.err_msg("Error: Missing required input files: '-i', '-f', '-r'") 
-            sys.exit(1)
-
-        if not args:
-            helper.err_msg("Error: Invalid/Missing HDF5 file input")   
-            print_help()
-            sys.exit(1)
-
-        self.pd_file = args[0]
-        
-    def print_help(self):
-            help_message =\
-            '''
-            Usage: python {} [OPTIONS] <JWR_checker/JWR_subset hdf5 file>
-            Options:
-                -i      .bam/.sam file (required)
-                -f      path to fast5s (required)
-                -r      Genome reference file (required)
-                -o      Prefix for output files <default: './output'>
-            For developer:
-                -T      Number of events trimmed from scrappie model <default: 0>
-                -t      Number of bases trimmed from raw signam, the raw samples are
-                            match to basecalled bases by tombo <default :6>
-                -F      Flanking sequence size in each side of candidate searching 
-                            window <default: 20>
-                -w      Candidate searching window size <default: 10>
-                -c      Config filename <default: 'config'>
-            '''.format(argv[0])
-            print(textwrap.dedent(help_message))
 
 def parse_arg():
     def print_help():
         help_message =\
         '''
-        Usage: python {} [OPTIONS] <JWR_checker/JWR_subset hdf5 file>
+        Usage: python3 {} [OPTIONS] <JWR_checker/JWR_subset hdf5 file>
         Options:
             -i      .bam/.sam file (required)
             -f      path to fast5s (required)
             -r      Genome reference file (required)
-            -o      Prefix for output files <default: './output'>
-            -a      (optional) Genome annotation in BED12 format. If provided, 
-                    NanoSplicer will include all annotated splice junction as candidate
-                    with highest preference level.
-            --non_canonical_annotation
-                    (optional) Genome annotation in BED12 format. If provided, 
-                    NanoSplicer will include annotated non-canonical splice 
-                    junction as candidate with highest preference level.
-        For developer:
+            -o      Prefix for output files <default: './output'>.
+            --threads
+                    Number of threads used <default: # of available cpus - 1>.
+
+        More option on the candidate splice junctions (optional):
+            User-provided splice junction (from annotation or short-read mapping):
+            --junction_BED      
+                    User-provided BED file containing known splice junctions. The BED 
+                    file can convert from genome annotation or short read mapping result. 
+                    If provided, NanoSplicer will include all splice junctions in the BED file
+                    as candidates with highest preference level. e.g. --junction_BED='xx.bed'
+            --non_canonical_junctions
+                    User-provided BED file containing known splice junctions. The BED 
+                    file be converted from genome annotation (GTF/GFF file) or short read mapping 
+                    result. If provided, NanoSplicer will include non-canonical (i.e., non GT-AT) 
+                    splice junctions in the BED file as candidates with highest preference level.
+                    e.g. --non_canonical_junctions='xx.bed'
+            Long-read mapping:
+            --supported_junc_as_candidate
+                    Add nearby long read supported splice junctions as candidates (if they have 
+                    not been included yet).
+            --min_support
+                    Minimum support, i.e. number of JWRs (with minimum JAQ) mapped ,for
+                     an additional splice junction to be added to candidate list <default: 3>
+            --min_JAQ_support
+                    Minimum JAQ (range: 0-1) for JWRs that counted as supports. <default: 0>
+
+        For developer only:
             -T      Number of events trimmed from scrappie model <default: 0>
             -t      Number of bases trimmed from raw signam, the raw samples are
                         match to basecalled bases by tombo <default :6>
@@ -197,24 +116,27 @@ def parse_arg():
             -w      Candidate searching window size <default: 10>
             -c      Config filename <default: 'config'>
             --plot_alignment
-                    output figures including the alignments between each junction
+                    Output figures including the alignments between each junction
                     squiggle to its candidate squiggles
             --plot_LR
-                    output likelihood ratio contribution figures, which show how each
+                    Output likelihood ratio contribution figures, which show how each
                     segment of the junction squiggle contributes to the likelihood ratio
         '''.format(argv[0])
         print(textwrap.dedent(help_message))
     
     argv = sys.argv
     
+    
     try: 
-        opts, args = getopt.getopt(argv[1:],"hi:f:r:o:T:t:b:F:w:c:a:",
+        opts, args = getopt.getopt(argv[1:],"hi:f:r:o:T:t:b:F:w:c:",
                     ["help","input_alignment=","input_fast5_dir=",
                     "genome_ref=","output_path=", "trim_model=",
                     "trim_signal=","dtw_adj","bandwidth=",
                     "flank_size=", "window=", "config_file=", 
                     "annotation_bed=", "plot_alignment", "plot_LR", 
-                    "non_canonical_annotation="])
+                    "non_canonical_junctions=", 'junction_BED=', 
+                    'min_support=', 'supported_junc_as_candidate', 
+                    'min_JAQ_support=', 'threads='])
     except getopt.GetoptError:
         helper.err_msg("Error: Invalid argument input") 
         print_help()
@@ -247,6 +169,10 @@ def parse_arg():
     bandwidth = 0.4
     flank_size = 20
     window = 10
+    include_mapped_junc = False
+    min_support = 3
+    min_JAQ_support = 0
+    n_process = mp.cpu_count()-1
 
     for opt, arg in opts:
         if opt in  ("-h", "--help"):
@@ -264,8 +190,6 @@ def parse_arg():
             trim_model = int(arg)
         elif opt in ("-t", "--trim_signal"):
             trim_signal = int(arg)
-        # elif opt in ("-a", "--dtw_adj"):
-        #     dtw_adj = True
         elif opt in ("-b", "--bandwidth"):
             bandwidth = float(arg)
         elif opt in ("-F", "--flank_size"):
@@ -274,14 +198,23 @@ def parse_arg():
             window = int(arg)
         elif opt in ("-c", "--config_file"):
             config_file = str(arg)
-        elif opt == "-a":
+        elif opt == "--junction_BED":
             anno_fn = arg
         elif opt == "--plot_alignment":
             plot_alignment = True
         elif opt == "--plot_LR":
             plot_LR = True
-        elif opt == "--non_canonical_annotation":
-            non_cano_anno_fn = arg        
+        elif opt == "--non_canonical_junctions":
+            non_cano_anno_fn = arg       
+        elif opt == "--supported_junc_as_candidate":
+            include_mapped_junc = True      
+        elif opt == "--min_support":
+            min_support = int(arg)      
+        elif opt == "--min_JAQ_support":
+            min_JAQ_support = int(arg)
+        elif opt == "--threads":
+            n_process = min(int(arg), n_process)
+               
 
     # import global variable from config file 
     mdl = importlib.import_module(config_file)
@@ -302,6 +235,10 @@ def parse_arg():
         helper.err_msg("Error: Missing input files.") 
         sys.exit(1)        
 
+    if include_mapped_junc and min_JAQ_support > 1:
+        helper.err_msg("Error: Invalid value for '--min_JAQ_support', value range: 0-1") 
+        sys.exit(1)        
+
     # choose the version of dtw (sum: minimize the sum of cost for the path)
     def dtw_local_alignment(candidate_squiggle, junction_squiggle, 
                             bandwidth = bandwidth, dist_type = None):
@@ -314,13 +251,15 @@ def parse_arg():
     return fast5_dir, out_fn, alignment_file, genome_ref, \
             bandwidth, trim_model, trim_signal, flank_size, \
              window, pd_file, anno_fn, non_cano_anno_fn, \
-             plot_alignment, plot_LR
+             plot_alignment, plot_LR, include_mapped_junc, min_support,\
+             min_JAQ_support, n_process
 
 def main():
     # parse command line argument
     fast5_dir, out_fn, alignment_file, genome_ref, bandwidth, trim_model, \
         trim_signal, flank_size, window, pd_file, anno_fn, non_cano_anno_fn, \
-        plot_alignment, plot_LR = parse_arg()
+        plot_alignment, plot_LR, include_mapped_junc, min_support,\
+        min_JAQ_support, n_process = parse_arg()
 
     # output filenames
     error_fn = out_fn + '_error_summary.tsv'
@@ -331,7 +270,6 @@ def main():
     # create directory if not exit
     directory = os.path.dirname(prob_table_fn)
     Path(directory).mkdir(parents=True, exist_ok=True)
-
 
     # check file exist
     if os.path.isfile(prob_table_fn):
@@ -361,28 +299,34 @@ def main():
     # import data
     jwr_df = pd.read_hdf(pd_file, key = 'data')
 
-    # import annotation bed file
+    # import user-porvided bed file
     if anno_fn:
-        anno_df = GetAnnoFromBed(anno_fn, ) 
+        anno_df = GetJuncFromBed(anno_fn,
+                GTAG_only = False, ref_FastaFile = genome_ref)
     else:
         anno_df = pd.DataFrame([])
 
     if non_cano_anno_fn:
         anno_df = pd.concat([anno_df, 
-                GetAnnoFromBed(non_cano_anno_fn, 
+                GetJuncFromBed(non_cano_anno_fn, 
                 GTAG_only = True, ref_FastaFile = genome_ref)]).drop_duplicates()
 
+
+    # get all mapped junction with certain hight JAQ support
+    if include_mapped_junc:
+        map_support_junc_df = Mapped_junc(pd_file, min_support, min_JAQ_support)
+    else:
+        map_support_junc_df = pd.DataFrame([])
 
     # get fast5 filenames recursively
     fast5_paths = Path(fast5_dir).rglob('*.fast5') # iterator
     fast5_paths = list(fast5_paths)
 
-    
     # start to processing the fast5 (multiread format)
     print("running process")
     from itertools import repeat
     #executor = concurrent.futures.ProcessPoolExecutor(mp.cpu_count()-1)
-    executor = concurrent.futures.ProcessPoolExecutor(mp.cpu_count()-1)
+    executor = concurrent.futures.ProcessPoolExecutor(n_process)
     pbar = tqdm(total = len(fast5_paths))
 
     futures = [executor.submit(run_multifast5, 
@@ -398,6 +342,7 @@ def main():
                                 prob_table_fn, 
                                 jwr_bed_fn,
                                 anno_df,
+                                map_support_junc_df,
                                 plot_alignment,
                                 plot_LR) for f in fast5_paths]
     
@@ -406,6 +351,8 @@ def main():
     
     pd.concat([x.result() for x in futures]).to_csv(error_fn)
 
+
+    # Quantification test
     if OUTPUT_JUNC_COUNT:
         jsb.merge_count_bed_df(
         df1 = jsb.pd_hdf5_to_count_bed_df(pd_file, 'skipped'),
@@ -430,8 +377,8 @@ def write_err_msg(d, jwr, error_msg):
 # running a single process 
 def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile, 
                     window, flank_size, trim_model, trim_signal,
-                    bandwidth, prob_table_fn, jwr_bed_fn, anno_df,
-                    plot_alignment, plot_LR):
+                    bandwidth, prob_table_fn, jwr_bed_fn, anno_df, 
+                    map_support_junc_df, plot_alignment, plot_LR):
     '''
     Description:
         Run a single process within a certain multi-read fast5
@@ -496,6 +443,24 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                                           ref_FastaFile, 
                                           window, jwr.chrID)
 
+        if len(map_support_junc_df):
+            # mapped splice junction in a window nearby
+            temp_d = map_support_junc_df[
+                    (map_support_junc_df.chrID ==  jwr.chrID) &
+                    (np.abs(map_support_junc_df.site1 - jwr.loc[0]) <= window) & 
+                    (np.abs(map_support_junc_df.site2 - jwr.loc[1]) <= window)
+                        ]
+            if len(temp_d):
+                map_candidate_tuples = \
+                    list(temp_d.apply(
+                          lambda row: (row.site1, row.site2), axis = 1))
+            else:
+                map_candidate_tuples = []
+            # get union of GT-AG candidate and annotation candidate
+            candidate_tuples =\
+                    list(set(candidate_tuples) | set(map_candidate_tuples))
+
+        
         if len(anno_df):
             # annotation in a window nearby
             temp_d = anno_df[

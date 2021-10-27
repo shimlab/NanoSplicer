@@ -29,7 +29,7 @@ class JWR_subset_param:
 
         # DEFAULT VALUE
         self.best_jaq, self.chrID, self.g_loc, \
-            self.output_csv = 0.9, None, None, False
+            self.output_csv = 0.95, None, None, False
 
         for opt, arg in opts:
             if opt in ("-h", "--help"):
@@ -59,11 +59,11 @@ class JWR_subset_param:
     def print_help(self):
         help_message =\
         '''
-        Usage: python {} [OPTIONS] <input file: hdf5 output from JWR_checker> <output file: hdf5>
+        Usage: python3 {} [OPTIONS] <input file: hdf5 output from JWR_checker> <output file: hdf5>
         Options:
             -h/--help       Print this help text
             --JAQ_thres     A value from 0-1, only JWRs with a junction alignment quality (JAQ)
-                            at or below the specified value will be retained <default: 0.9>
+                            at or below the specified value will be retained <default: 0.95>
             --chrID         Target a specific chromosome, chrID should match
                                 the chromosome name in the BAM
             --genome-loc    Target a specific genomic region, e.g. --genome-loc=0-10000

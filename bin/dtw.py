@@ -123,6 +123,8 @@ class dtw(object):
 
     #_max_sum_band_flipped
     def dtw_local_alignment(self):
+        # seed for tie-breaker when trace back the DTW path
+        np.random.seed(seed=2021)
 
         short_len = len(self.junction_squiggle)
         long_len = len(self.candidate_squiggle)

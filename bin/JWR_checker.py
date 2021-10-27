@@ -9,21 +9,11 @@
         A HDF5 with given output_name will be generated with the following 
         columns:
             1. read_id: <str> the id of original read of the JWR
-            2. JWR_intron_start: <int> location of intron start in the 
-                                    reference genome supported by the JWR.
-            3. JWR_intron_end: <int> location of intron end in the 
-                                    reference genome supported by the JWR.
-            4. JAQ: <float> junction alignment quality
-
-    Output:
-        BED file
-        1.chrom 
-        2.chromStart: mapped 5' side splice site
-        3.chromEnd: mapped 5' side splice site
-        4.name: read_id
-        5.score: JAQ
-        6.
-
+            2. mapQ: <Int> the mapping quality in the input BAM
+            3. transcript_strand: '+'/'-'
+            4. chrID: mapped chromosome name
+            5. <tuple> location of the splice junciton in the reference genome
+            6. JAQ: <float> junction alignment quality
 '''
 import h5py
 import pandas as pd
@@ -140,10 +130,9 @@ class JWR_class:
                 junction_cigar2 +=  i
             if ref_index >= min(junc2_rel_read_start + half_motif_size,
                                     self.reference_end - self.reference_start):
-                break
-                
+                break   
         return junction_cigar1[-25:] + junction_cigar2[:25]
-    def get_junc_map_quality(self,cigar):
+    def get_junc_map_quality(self, cigar):
         '''
         The junc map quality is simply as the proportion of 'M's within the cigar string
         '''
@@ -208,7 +197,7 @@ class JWR_checker_param:
         '''
         Finding junctions within reads (JWRs) from a spliced mapping result (BAM). 
 
-        Usage: python {} [OPTIONS] <BAM file> <output hdf5 file>
+        Usage: python3 {} [OPTIONS] <BAM file> <output hdf5 file>
         
         Options:
             -h/--help        Print this help text
@@ -257,13 +246,15 @@ def chunks(lst, n):
         yield lst[i:i + n]
 
 def main():
+
+    # read command line arguments
     param = JWR_checker_param()
+
+    # get splice junctions from BAM
     algn_file = pysam.AlignmentFile(param.bamfile)
     reads_fetch = algn_file.fetch(param.chrID,
                                     param.g_loc[0], 
                                     param.g_loc[1])
-
-
     JWR_fetch = JWR_from_reads(reads_fetch)
 
     JWRs = list(JWR_fetch.get_JWR())
