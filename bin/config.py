@@ -30,6 +30,7 @@ MINIMUM_POINT_FOR_DIST_SEG = 4
 # prior ratio for sequence pattern
 PATTERN_PREFERENCE = True
 PRIOR_RATIO = 9
+PRIOR_RATIO_NON_GTAG = 1
 
 # output
 SAVE_DATA = False

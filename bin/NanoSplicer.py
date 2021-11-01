@@ -617,7 +617,15 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                 
                 rel_to_ref_LR = np.exp(dist_seg_LR)/np.exp(dist_seg_LR[index_m])
                 post_prob = rel_to_ref_LR/sum(rel_to_ref_LR)
-                post_prob_prior = post_prob * (PRIOR_RATIO **candidate_preference)
+                
+                # add sequence pattern prior
+                post_prob_prior = post_prob
+                post_prob_prior[candidate_preference==0] =\
+                    post_prob[candidate_preference==0]*PRIOR_RATIO_NON_GTAG
+                post_prob_prior[candidate_preference==2] =\
+                    post_prob[candidate_preference==2]*PRIOR_RATIO
+                post_prob_prior[candidate_preference==3] =\
+                    post_prob[candidate_preference==3]*(PRIOR_RATIO**2)
                 post_prob_prior = post_prob_prior/sum(post_prob_prior)
                 
                 fig = plt.figure(figsize=(30,5 * num_of_cand), dpi = 400)
@@ -734,7 +742,13 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                 
                 rel_to_ref_LR = np.exp(dist_seg_LR)/np.exp(dist_seg_LR[index_m])
                 post_prob = rel_to_ref_LR/sum(rel_to_ref_LR)
-                post_prob_prior = post_prob * (PRIOR_RATIO **candidate_preference)
+                post_prob_prior = post_prob
+                post_prob_prior[candidate_preference==0] =\
+                    post_prob[candidate_preference==0]*PRIOR_RATIO_NON_GTAG
+                post_prob_prior[candidate_preference==2] =\
+                    post_prob[candidate_preference==2]*PRIOR_RATIO
+                post_prob_prior[candidate_preference==3] =\
+                    post_prob[candidate_preference==3]*(PRIOR_RATIO**2)
                 post_prob_prior = post_prob_prior/sum(post_prob_prior)
                 fig = plt.figure(figsize=(20,5 * num_of_cand))
                 subplot_index = 0
@@ -901,9 +915,14 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                 dist_seg_logLR = np.array(dist_seg_logLR)
                 rel_to_ref_LR = np.exp(dist_seg_logLR - dist_seg_logLR[index_m])
                 post_prob = rel_to_ref_LR/sum(rel_to_ref_LR)
-                post_prob_prior = post_prob * (PRIOR_RATIO ** candidate_preference)
+                post_prob_prior = post_prob
+                post_prob_prior[candidate_preference==0] =\
+                    post_prob[candidate_preference==0]*PRIOR_RATIO_NON_GTAG
+                post_prob_prior[candidate_preference==2] =\
+                    post_prob[candidate_preference==2]*PRIOR_RATIO
+                post_prob_prior[candidate_preference==3] =\
+                    post_prob[candidate_preference==3]*(PRIOR_RATIO**2)
                 post_prob_prior = post_prob_prior/sum(post_prob_prior)
-
                 # segment abs diff
                 even_logL_list = [even_wise_log_likelihood(junction_squiggle, x, max_z=MAX_Z) for x in squiggle_match_list]
                 p_wise_Si = [score_dict[x]/len(junction_squiggle) for x in range(num_of_cand)]
