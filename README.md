@@ -31,7 +31,7 @@ For `JWR_checker.py` and `JWR_subset.py`:
 * `numpy`
 * `tqdm`
 * `h5py`
-* 'tables'
+* `tables`
 
 Additional requirements for `NanoSplicer`:
 * `tombo`
