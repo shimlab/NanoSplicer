@@ -33,7 +33,7 @@ For `JWR_checker.py` and `JWR_subset.py`:
 * `h5py`
 * `tables`
 
-Additional requirements for `NanoSplicer`:
+Additional requirements for `NanoSplicer.py`:
 * `tombo`
 * `ont_fast5_api`
 * `matplotlib`
