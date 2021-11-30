@@ -619,7 +619,7 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                 post_prob = rel_to_ref_LR/sum(rel_to_ref_LR)
                 
                 # add sequence pattern prior
-                post_prob_prior = post_prob
+                post_prob_prior = post_prob.copy()
                 post_prob_prior[candidate_preference==0] =\
                     post_prob[candidate_preference==0]*PRIOR_RATIO_NON_GTAG
                 post_prob_prior[candidate_preference==2] =\
@@ -742,7 +742,7 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                 
                 rel_to_ref_LR = np.exp(dist_seg_LR)/np.exp(dist_seg_LR[index_m])
                 post_prob = rel_to_ref_LR/sum(rel_to_ref_LR)
-                post_prob_prior = post_prob
+                post_prob_prior = post_prob.copy()
                 post_prob_prior[candidate_preference==0] =\
                     post_prob[candidate_preference==0]*PRIOR_RATIO_NON_GTAG
                 post_prob_prior[candidate_preference==2] =\
@@ -872,7 +872,7 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                     os.path.join(fig_dir,"{}_fig{}_{}.png".format(output_prefix,read.qname, j)))
                 plt.close()
 
-            # NanoSplicer plot
+            # NanoSplicer result
             if RESULT and j == num_of_cand - 1:
                 # minimap2 candidate as reference
                 matched_candidate_ref = squiggle_match[index_m]
@@ -915,7 +915,7 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                 dist_seg_logLR = np.array(dist_seg_logLR)
                 rel_to_ref_LR = np.exp(dist_seg_logLR - dist_seg_logLR[index_m])
                 post_prob = rel_to_ref_LR/sum(rel_to_ref_LR)
-                post_prob_prior = post_prob
+                post_prob_prior = post_prob.copy()
                 post_prob_prior[candidate_preference==0] =\
                     post_prob[candidate_preference==0]*PRIOR_RATIO_NON_GTAG
                 post_prob_prior[candidate_preference==2] =\
