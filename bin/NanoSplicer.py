@@ -514,12 +514,12 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
         motif_end_ref -= trim_signal
 
         #tombo resquiggle
-        # try:
-        tombo_results, tombo_start_clip, tombo_end_clip, std_ref, sd_of_median= \
-            tombo_squiggle_to_basecalls(multi_fast5, read)
-        # except:
-        #     failed_jwr = write_err_msg(failed_jwr, jwr, 'Fail to resquiggle (Tombo).')
-        #     continue
+        try:
+            tombo_results, tombo_start_clip, tombo_end_clip, std_ref, sd_of_median= \
+                tombo_squiggle_to_basecalls(multi_fast5, read)
+        except:
+            failed_jwr = write_err_msg(failed_jwr, jwr, 'Fail to resquiggle (Tombo).')
+            continue
         
         read_length = len(tombo_results.genome_seq) \
                             + tombo_start_clip + tombo_end_clip
@@ -619,7 +619,7 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                 post_prob = rel_to_ref_LR/sum(rel_to_ref_LR)
                 
                 # add sequence pattern prior
-                post_prob_prior = post_prob
+                post_prob_prior = post_prob.copy()
                 post_prob_prior[candidate_preference==0] =\
                     post_prob[candidate_preference==0]*PRIOR_RATIO_NON_GTAG
                 post_prob_prior[candidate_preference==2] =\
@@ -686,16 +686,25 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                     if True:
                         ax.set_title('Log LR: {:.2f}, average Log-Lik: {:.2f}, post probability: {:.3f}, candidate_preference: {}, post probability(seq prior ratio = 9): {:.3f} '.format(
                             dist_seg_LR[cand], 
-                            np.mean(
+                            normalise_loglik(
+                                np.mean(
                                 even_wise_log_likelihood(junction_squiggle, squiggle_match_list[cand], max_z=MAX_Z)),
+                                sd = sd_of_median,
+                                C = SPIKE_THRES, 
+                                qunatile = QUANTILE
+                            ),
                             post_prob[cand], 
                             preference_text_dict[candidate_preference[cand]], 
                             post_prob_prior[cand]), y=1.0, pad=-14)
 
                 fig.suptitle('minimap2 candidate likelihood: {:.2f}, average Log-Lik: {:.2f}, post probability: {:.3f}, candidate_preference: {}, post probability(seq prior ratio = 9): {:.3f}'.format(
                         dist_seg_LR[index_m], 
-                        np.mean(
-                            even_wise_log_likelihood(junction_squiggle, squiggle_match_list[index_m], max_z=MAX_Z)),
+                        normalise_loglik(
+                            np.mean(even_wise_log_likelihood(junction_squiggle, squiggle_match_list[index_m], max_z=MAX_Z)),
+                            sd = sd_of_median,
+                            C = SPIKE_THRES,
+                            qunatile = QUANTILE
+                            ),
                         post_prob[index_m],
                         preference_text_dict[candidate_preference[index_m]], 
                         post_prob_prior[index_m]))
@@ -742,7 +751,7 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                 
                 rel_to_ref_LR = np.exp(dist_seg_LR)/np.exp(dist_seg_LR[index_m])
                 post_prob = rel_to_ref_LR/sum(rel_to_ref_LR)
-                post_prob_prior = post_prob
+                post_prob_prior = post_prob.copy()
                 post_prob_prior[candidate_preference==0] =\
                     post_prob[candidate_preference==0]*PRIOR_RATIO_NON_GTAG
                 post_prob_prior[candidate_preference==2] =\
@@ -872,7 +881,7 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                     os.path.join(fig_dir,"{}_fig{}_{}.png".format(output_prefix,read.qname, j)))
                 plt.close()
 
-            # NanoSplicer plot
+            # NanoSplicer result
             if RESULT and j == num_of_cand - 1:
                 # minimap2 candidate as reference
                 matched_candidate_ref = squiggle_match[index_m]
@@ -915,7 +924,6 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                 dist_seg_logLR = np.array(dist_seg_logLR)
                 rel_to_ref_LR = np.exp(dist_seg_logLR - dist_seg_logLR[index_m])
                 post_prob = rel_to_ref_LR/sum(rel_to_ref_LR)
-
                 post_prob_prior = post_prob.copy()
                 post_prob_prior[candidate_preference==0] =\
                     post_prob[candidate_preference==0]*PRIOR_RATIO_NON_GTAG
@@ -928,9 +936,8 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                 even_logL_list = [even_wise_log_likelihood(junction_squiggle, x, max_z=MAX_Z) for x in squiggle_match_list]
                 p_wise_Si = [score_dict[x]/len(junction_squiggle) for x in range(num_of_cand)]
                 n_of_aligned_event = [len(x) for x in even_logL_list]
-                segment_Si = [np.mean(x) for x in even_logL_list]
-                worst_even_logL_list = [sorted(x)[0] for x in even_logL_list]
-
+                segment_Si = [normalise_loglik(np.mean(x),sd = sd_of_median, C = SPIKE_THRES, qunatile = QUANTILE) for x in even_logL_list]
+                #worst_even_logL_list = [sorted(x)[0] for x in even_logL_list]
                 f = open(prob_table_fn, "a")
                 #fcntl.flock(f,fcntl.LOCK_EX)
                 # f.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
@@ -1297,5 +1304,13 @@ def genome_to_read_pos_conversion(cigar):
             g_r_mapping.append(-1)
     return g_r_mapping
 
+def normalise_loglik(loglike, sd, C, qunatile):
+    quantile_value = scipy.stats.norm.ppf(qunatile)*sd
+    density = scipy.stats.norm.pdf(quantile_value, scale = sd)
+    
+    # area under the modified normal distribution
+    auc_tail = (C-quantile_value)*density*2
+    auc_body = abs(0.5-qunatile) * 2
+    return loglike - np.log(auc_tail + auc_body)
 if __name__ == "__main__":
     main()
