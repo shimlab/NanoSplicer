@@ -514,12 +514,12 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
         motif_end_ref -= trim_signal
 
         #tombo resquiggle
-        try:
-            tombo_results, tombo_start_clip, tombo_end_clip, std_ref, sd_of_median= \
-                tombo_squiggle_to_basecalls(multi_fast5, read)
-        except:
-            failed_jwr = write_err_msg(failed_jwr, jwr, 'Fail to resquiggle (Tombo).')
-            continue
+        # try:
+        tombo_results, tombo_start_clip, tombo_end_clip, std_ref, sd_of_median= \
+            tombo_squiggle_to_basecalls(multi_fast5, read)
+        # except:
+        #     failed_jwr = write_err_msg(failed_jwr, jwr, 'Fail to resquiggle (Tombo).')
+        #     continue
         
         read_length = len(tombo_results.genome_seq) \
                             + tombo_start_clip + tombo_end_clip
@@ -915,7 +915,8 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                 dist_seg_logLR = np.array(dist_seg_logLR)
                 rel_to_ref_LR = np.exp(dist_seg_logLR - dist_seg_logLR[index_m])
                 post_prob = rel_to_ref_LR/sum(rel_to_ref_LR)
-                post_prob_prior = post_prob
+
+                post_prob_prior = post_prob.copy()
                 post_prob_prior[candidate_preference==0] =\
                     post_prob[candidate_preference==0]*PRIOR_RATIO_NON_GTAG
                 post_prob_prior[candidate_preference==2] =\
@@ -948,7 +949,6 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                 #     ))
                 #     # fcntl.flock(f,fcntl.LOCK_UN)
                 # f.close()
-                
                 f.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
                     jwr.id,
                     jwr.chrID,
@@ -1031,7 +1031,7 @@ def tombo_squiggle_to_basecalls(multi_fast5, AlignedSegment):
     # extract read info
     #fast5s_f = get_fast5_file(read_fast5_fn, 'r')
     #fast5_data = h5py.File
-    seq_samp_type = tombo_helper.seqSampleType('DNA', False)
+    seq_samp_type = tombo_helper.seqSampleType('RNA', True)
     #seq_data = resquiggle.get_read_seq(fast5_data, 'Basecall_1D_000', 'BaseCalled_template', seq_samp_type, 0)
     
     if AlignedSegment.is_reverse:
@@ -1056,7 +1056,9 @@ def tombo_squiggle_to_basecalls(multi_fast5, AlignedSegment):
     # extract raw signal
     #all_raw_signal = tombo_helper.get_raw_read_slot(fast5_data)['Signal'][:]
     all_raw_signal = multi_fast5.get_read(AlignedSegment.qname).get_raw_data()
+   
     # if this is a direct RNA read, flip raw signal to process from 5' to 3'
+    
     if seq_samp_type.rev_sig:
         all_raw_signal = all_raw_signal[::-1]
 
@@ -1070,11 +1072,11 @@ def tombo_squiggle_to_basecalls(multi_fast5, AlignedSegment):
     # align raw signal to basecalls
     try:
         rsqgl_results = resquiggle.resquiggle_read(
-        map_results, std_ref, rsqgl_params, all_raw_signal=all_raw_signal)
+        map_results, std_ref, rsqgl_params, all_raw_signal=all_raw_signal, outlier_thresh = np.inf)
     except:
-        rsqgl_params = rsqgl_params ._replace(bandwidth=2000)
+        rsqgl_params = rsqgl_params._replace(bandwidth=2000)
         rsqgl_results = resquiggle.resquiggle_read(
-        map_results, std_ref, rsqgl_params, all_raw_signal=all_raw_signal)
+        map_results, std_ref, rsqgl_params, all_raw_signal=all_raw_signal, outlier_thresh = np.inf)
 
     # estimation sd of segment median
     sd_of_median = sd_from_tombo(rsqgl_results,std_ref,read_seq)
