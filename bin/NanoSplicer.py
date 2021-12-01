@@ -688,7 +688,10 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                             dist_seg_LR[cand], 
                             normalise_loglik(
                                 np.mean(
-                                even_wise_log_likelihood(junction_squiggle, squiggle_match_list[cand], max_z=MAX_Z)),sd = sd_of_median
+                                even_wise_log_likelihood(junction_squiggle, squiggle_match_list[cand], max_z=MAX_Z)),
+                                sd = sd_of_median,
+                                C = SPIKE_THRES, 
+                                qunatile = QUANTILE
                             ),
                             post_prob[cand], 
                             preference_text_dict[candidate_preference[cand]], 
@@ -697,7 +700,10 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                 fig.suptitle('minimap2 candidate likelihood: {:.2f}, average Log-Lik: {:.2f}, post probability: {:.3f}, candidate_preference: {}, post probability(seq prior ratio = 9): {:.3f}'.format(
                         dist_seg_LR[index_m], 
                         normalise_loglik(
-                                np.mean(even_wise_log_likelihood(junction_squiggle, squiggle_match_list[index_m], max_z=MAX_Z)),sd = sd_of_median
+                            np.mean(even_wise_log_likelihood(junction_squiggle, squiggle_match_list[index_m], max_z=MAX_Z)),
+                            sd = sd_of_median,
+                            C = SPIKE_THRES,
+                            qunatile = QUANTILE
                             ),
                         post_prob[index_m],
                         preference_text_dict[candidate_preference[index_m]], 
@@ -932,7 +938,7 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                 even_logL_list = [even_wise_log_likelihood(junction_squiggle, x, max_z=MAX_Z) for x in squiggle_match_list]
                 p_wise_Si = [score_dict[x]/len(junction_squiggle) for x in range(num_of_cand)]
                 n_of_aligned_event = [len(x) for x in even_logL_list]
-                segment_Si = [normalise_loglik(np.mean(x),sd = sd_of_median) for x in even_logL_list]
+                segment_Si = [normalise_loglik(np.mean(x),sd = sd_of_median, C = SPIKE_THRES, qunatile = QUANTILE) for x in even_logL_list]
                 #worst_even_logL_list = [sorted(x)[0] for x in even_logL_list]
 
                 f = open(prob_table_fn, "a")
@@ -1300,7 +1306,7 @@ def genome_to_read_pos_conversion(cigar):
             g_r_mapping.append(-1)
     return g_r_mapping
 
-def normalise_loglik(loglike, sd, C = SPIKE_THRES, qunatile = QUANTILE):
+def normalise_loglik(loglike, sd, C, qunatile):
     quantile_value = scipy.stats.norm.ppf(qunatile)*sd
     density = scipy.stats.norm.pdf(quantile_value, scale = sd)
     
