@@ -18,25 +18,31 @@ Some example input files can be found at `example/` to run all of the modules be
 
 <img src="img/NanoSplicer_modules.png" width="700">
 
-# Requirements
-NanoSplicer has been tested on python 3.6 and 3.7. Everything should work for python3.X. 
+# Install
 
-## Package Dependency
+```
+git clone https://github.com/shimlab/NanoSplicer.git
+```
+Use pip3 for python3 to install following dependencies:
+
 For `JWR_checker.py` and `JWR_subset.py`:
 * `pandas`
 * `pysam`
 * `numpy`
 * `tqdm`
 * `h5py`
+* `tables`
 
-Additional requirements for `NanoSplicer`:
+Additional requirements for `NanoSplicer.py`:
 * `tombo`
 * `ont_fast5_api`
 * `matplotlib`
-* `fcntl`
 * `intervaltree`
 * `scipy`
-* `skimage`
+* `scikit-image`
+
+**Note**: 
+NanoSplicer has been tested on python 3.6 and 3.7. There might be problems when installing `tombo` with python 3.8. Downgrade to python 3.7 would resove the issues. 
 
 ## Container access
 If there are any problems installing the dependencies above, an alternative way of setting up the environment is available via a container. The dependencies
@@ -46,12 +52,6 @@ required for running NanoSplicer have been packaged into a container and can be 
 singularity pull NanoSplicer_container.sif docker://youyupei/nanosplicer:v1
 ```
 **For people not familiar with containers**: You can run linux commands within the container by using `singularity shell` or `singularity exec`. These commands automatically bind your home directory to the home directory inside the container, which means everything under `~/` (including the sub-directories) will be accessible without extra steps. If your data are saved in a different directory, you'll need to bind the directory with `-B <local path>:<path in container>` when running `singularity shell` or `singularity exec`. For example, if your data are in `/data`, you need to add `-B /data:/folder_in_container`. Everything in `/data` is then accessible in `/folder_in_container`. You may use the same name for convenience (e.g. `-B /data:/data`). A more formal introduction to singularity can be found at https://sylabs.io/singularity/.
-
-# Install
-
-```
-git clone https://github.com/shimlab/NanoSplicer.git
-```
 
 # Modules
 All the following scripts can be found at `bin/`
