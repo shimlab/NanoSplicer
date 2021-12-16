@@ -1,0 +1,20 @@
+name: NanoSplicer
+channels:
+  - bioconda
+  - default
+dependencies:
+  - python=3.7 
+  - pandas
+  - pysam
+  - numpy
+  - tqdm
+  - h5py
+  - ont-tombo
+  - matplotlib
+  - intervaltree
+  - scipy
+  - scikit-image
+  - pip
+  - pip:
+    - ont_fast5_api
+    - tables
