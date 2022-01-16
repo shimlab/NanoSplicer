@@ -55,12 +55,15 @@ import numpy as np
 import re
 import fcntl
 import pysam
+import itertools
 from tqdm import tqdm
 from intervaltree import Interval
 from intervaltree import IntervalTree
 from pathlib import Path
 from ont_fast5_api.fast5_interface import get_fast5_file        
 from scipy.stats.mstats import theilslopes
+from tombo import tombo_helper, tombo_stats, resquiggle
+
 
 # denosing
 #from skimage.restoration import denoise_wavelet
@@ -271,29 +274,41 @@ def main():
     directory = os.path.dirname(prob_table_fn)
     Path(directory).mkdir(parents=True, exist_ok=True)
 
+    # # check file exist
+    # if os.path.isfile(prob_table_fn):
+    #     helper.err_msg("File '{}' exists, please re-try by specify another output filename or remove the existing file.".format(prob_table_fn)) 
+    #     sys.exit(1)
+    # if os.path.isfile(jwr_bed_fn):
+    #     helper.err_msg("File '{}' exists, please re-try by specify another output filename or remove the existing file.".format(jwr_bed_fn)) 
+    #     sys.exit(1)
+
     # check file exist
-    if os.path.isfile(prob_table_fn):
-        helper.err_msg("File '{}' exists, please re-try by specify another output filename or remove the existing file.".format(prob_table_fn)) 
-        sys.exit(1)
-    if os.path.isfile(jwr_bed_fn):
-        helper.err_msg("File '{}' exists, please re-try by specify another output filename or remove the existing file.".format(jwr_bed_fn)) 
-        sys.exit(1)
+    if os.path.isfile(prob_table_fn) or os.path.isfile(jwr_bed_fn):
+        i = ''
+        while i not in ['NO', 'N', 'Y','YES']:
+            i = input("File '{}' and/or '{}' exists, would you like to overwrite it? [Y|N]?".format(prob_table_fn, jwr_bed_fn)) 
+            i = i.upper()
+            if i in ['Y','YES']:
+                break
+            if i in ['NO', 'N']:
+                helper.err_msg("File '{}' and/or '{}' exists, please re-try by specify another output filename prefix.".format(prob_table_fn, jwr_bed_fn)) 
+                sys.exit(1)
+        
     
     # creat empty file will header
-    else:
-        f = open(prob_table_fn, "w")
-        f.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
-                                            'read_id',
-                                            'reference_name',
-                                            'inital_junction',
-                                            'JAQ',
-                                            'candidates',
-                                            'candidate_sequence_motif_preference',
-                                            'SIQ',
-                                            'prob_uniform_prior',
-                                            'prob_seq_pattern_prior',
-                                            'best_prob'
-                                             ))
+    f = open(prob_table_fn, "w")
+    f.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
+                                        'read_id',
+                                        'reference_name',
+                                        'inital_junction',
+                                        'JAQ',
+                                        'candidates',
+                                        'candidate_sequence_motif_preference',
+                                        'SIQ',
+                                        'prob_uniform_prior',
+                                        'prob_seq_pattern_prior',
+                                        'best_prob'
+                                            ))
     f.close()
 
     # import data
@@ -328,6 +343,8 @@ def main():
     #executor = concurrent.futures.ProcessPoolExecutor(mp.cpu_count()-1)
     executor = concurrent.futures.ProcessPoolExecutor(n_process)
     pbar = tqdm(total = len(fast5_paths))
+
+
 
     futures = [executor.submit(run_multifast5, 
                                 f, 
@@ -438,10 +455,11 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
             continue
 
         # get candidate motifs
-            # find GT-AG pattern in a window nearby
-        candidate_tuples = canonical_site_finder(read, jwr.loc, 
+            # find GT-AG pattern in a window nearby (set)
+        candidate_tuples = set(canonical_site_finder(read, jwr.loc, 
                                           ref_FastaFile, 
-                                          window, jwr.chrID)
+                                          window, jwr.chrID,find_GCAG=FIND_GCAG, 
+                               find_ATAC=FIND_ATAC))
 
         if len(map_support_junc_df):
             # mapped splice junction in a window nearby
@@ -452,34 +470,48 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                         ]
             if len(temp_d):
                 map_candidate_tuples = \
-                    list(temp_d.apply(
+                    set(temp_d.apply(
                           lambda row: (row.site1, row.site2), axis = 1))
             else:
-                map_candidate_tuples = []
+                map_candidate_tuples = set()
             # get union of GT-AG candidate and annotation candidate
             candidate_tuples =\
-                    list(set(candidate_tuples) | set(map_candidate_tuples))
+                    candidate_tuples | map_candidate_tuples
 
         
+
+        anno_candidate_tuples = set()
+        anno_site_candidate_tuples = set()
         if len(anno_df):
             # annotation in a window nearby
-            temp_d = anno_df[
-                    (anno_df.chrID ==  jwr.chrID) &
-                    (np.abs(anno_df.site1 - jwr.loc[0]) <= window) & 
-                    (np.abs(anno_df.site2 - jwr.loc[1]) <= window)
-                        ]
-            if len(temp_d):
+            sub_d = anno_df[anno_df.chrID ==  jwr.chrID]
+
+            s1_in_win_d = sub_d[(np.abs(sub_d.site1 - jwr.loc[0]) <= window)]
+            s12_in_win_d = s1_in_win_d[
+                (np.abs(s1_in_win_d.site2 - jwr.loc[1]) <= window)]
+
+            nearby_site1 = s1_in_win_d.site1
+            nearby_site2 = sub_d[(np.abs(sub_d.site2 - jwr.loc[1]) <= window)].site2
+            
+
+            if len(nearby_site1) & len(nearby_site2):
+                anno_site_candidate_tuples = \
+                    set(itertools.product(nearby_site1, nearby_site2))
+
+            if len(s12_in_win_d):
                 anno_candidate_tuples = \
-                    list(temp_d.apply(
+                    set(s12_in_win_d.apply(
                           lambda row: (row.site1, row.site2), axis = 1))
-            else:
-                anno_candidate_tuples = []
+                        
             # get union of GT-AG candidate and annotation candidate
             candidate_tuples =\
-                    list(set(candidate_tuples) | set(anno_candidate_tuples))
-        else:
-            anno_candidate_tuples = []
+                candidate_tuples | anno_candidate_tuples | anno_site_candidate_tuples
 
+
+        
+        
+        # candidate junction set to list
+        candidate_tuples = list(candidate_tuples)
         if jwr.loc not in candidate_tuples:
             candidate_tuples.append(jwr.loc)
 
@@ -490,10 +522,12 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                                         pattern_preference = PATTERN_PREFERENCE)
 
         # adjust annotated junction (if provided)
+        if len(anno_site_candidate_tuples):
+            for junc in anno_site_candidate_tuples:
+                candidate_preference[candidate_tuples.index(junc)] = 4
         if len(anno_candidate_tuples):
             for junc in anno_candidate_tuples:
-                candidate_preference[candidate_tuples.index(junc)] = 3
-        
+                candidate_preference[candidate_tuples.index(junc)] = 5
         candidate_preference = np.array(candidate_preference)
         
         if not candidate_motif:# or len(candidate_motif) == 1:  
@@ -504,6 +538,7 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
         # check reverse
         candidate_motif_rev = [helper.reverse_complement(seq) 
                                 for seq in candidate_motif]
+
         if read.is_reverse:
             candidates_for_read = candidate_motif_rev
         else:
@@ -684,7 +719,8 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                     
                     #figure title
                     if True:
-                        ax.set_title('Log LR: {:.2f}, average Log-Lik: {:.2f}, post probability: {:.3f}, candidate_preference: {}, post probability(seq prior ratio = 9): {:.3f} '.format(
+                        ax.set_title('{} Log LR: {:.2f}, average Log-Lik: {:.2f}, post probability: {:.3f}, candidate_preference: {}, post probability(seq prior ratio = 9): {:.3f} '.format(
+                            candidate_tuples[cand],
                             dist_seg_LR[cand], 
                             normalise_loglik(
                                 np.mean(
@@ -697,7 +733,8 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                             preference_text_dict[candidate_preference[cand]], 
                             post_prob_prior[cand]), y=1.0, pad=-14)
 
-                fig.suptitle('minimap2 candidate likelihood: {:.2f}, average Log-Lik: {:.2f}, post probability: {:.3f}, candidate_preference: {}, post probability(seq prior ratio = 9): {:.3f}'.format(
+                fig.suptitle('{} minimap2 candidate likelihood: {:.2f}, average Log-Lik: {:.2f}, post probability: {:.3f}, candidate_preference: {}, post probability(seq prior ratio = 9): {:.3f}'.format(
+                        candidate_tuples[index_m],
                         dist_seg_LR[index_m], 
                         normalise_loglik(
                             np.mean(even_wise_log_likelihood(junction_squiggle, squiggle_match_list[index_m], max_z=MAX_Z)),
@@ -1038,7 +1075,6 @@ def tombo_squiggle_to_basecalls(multi_fast5, AlignedSegment):
                 #   - read_start_rel_to_raw: start of rsqgl_results.raw_signal and rsqgl_results.segs within original all_raw_signal
                 #   - segs: start position for each model-able base (should be one longer than length of genome_seq to include last end point) 
     '''
-    from tombo import tombo_helper, tombo_stats, resquiggle
     # extract read info
     #fast5s_f = get_fast5_file(read_fast5_fn, 'r')
     #fast5_data = h5py.File

@@ -109,7 +109,8 @@ def find_candidate(Interval_list, window=10, min_primary = 0,
     return candidate_boundaries
 
 def canonical_site_finder(aligned_seg, candidate_Interval, ref_FastaFile,
-                               window, chrID):
+                               window, chrID, find_GCAG=False, 
+                               find_ATAC=False):
     '''
         Generate candidate motif given the position of intron boundary.
         Input:
@@ -142,47 +143,119 @@ def canonical_site_finder(aligned_seg, candidate_Interval, ref_FastaFile,
     acceptor_pattern = ref_FastaFile.fetch(chrID, end - window - 2, \
                                         end + window).upper()
 
+    
     if ts == '+':
+        junction_list = []
         intron_start_candidate = [start - window + m.start() 
                                     for m in re.finditer("GT",donor_pattern)]
         intron_end_candidate = [end - window + m.start()
                     for m in re.finditer("AG",acceptor_pattern)]
-        if not intron_start_candidate or not intron_end_candidate:
-            return []
-        else:
-            return list(itertools.product(
-                intron_start_candidate, intron_end_candidate))
+        
+        if intron_start_candidate and intron_end_candidate:            
+            junction_list += list(itertools.product(
+                            intron_start_candidate, intron_end_candidate))
+        if find_ATAC:
+            intron_start_candidate = [start - window + m.start() 
+                                        for m in re.finditer("AT",donor_pattern)]
+            intron_end_candidate = [end - window + m.start()
+                        for m in re.finditer("AC",acceptor_pattern)]
+            
+            if intron_start_candidate and intron_end_candidate:            
+                junction_list += list(itertools.product(
+                                intron_start_candidate, intron_end_candidate))            
+
+        if find_GCAG:
+            intron_start_candidate = [start - window + m.start() 
+                                        for m in re.finditer("GC",donor_pattern)]
+            intron_end_candidate = [end - window + m.start()
+                        for m in re.finditer("AG",acceptor_pattern)]
+            
+            if intron_start_candidate and intron_end_candidate:            
+                junction_list += list(itertools.product(
+                                intron_start_candidate, intron_end_candidate))
+        return junction_list        
     
     elif ts == '-':
+        junction_list = []
         intron_start_candidate = [start - window + m.start() 
                                     for m in re.finditer("CT",donor_pattern)]
         intron_end_candidate = [end - window + m.start()
                     for m in re.finditer("AC",acceptor_pattern)]
-        if not intron_start_candidate or not intron_end_candidate:
-            return []
-        else:
-            return list(itertools.product(
-                intron_start_candidate, intron_end_candidate))
-        
+        if intron_start_candidate and intron_end_candidate:            
+            junction_list += list(itertools.product(
+                            intron_start_candidate, intron_end_candidate))
+        if find_ATAC:
+            intron_start_candidate = [start - window + m.start() 
+                                        for m in re.finditer("GT",donor_pattern)]
+            intron_end_candidate = [end - window + m.start()
+                        for m in re.finditer("AT",acceptor_pattern)]
+            if intron_start_candidate and intron_end_candidate:            
+                junction_list += list(itertools.product(
+                                intron_start_candidate, intron_end_candidate))            
+
+        if find_GCAG:
+            intron_start_candidate = [start - window + m.start() 
+                                        for m in re.finditer("CT",donor_pattern)]
+            intron_end_candidate = [end - window + m.start()
+                        for m in re.finditer("GC",acceptor_pattern)]
+            if intron_start_candidate and intron_end_candidate:            
+                junction_list += list(itertools.product(
+                                intron_start_candidate, intron_end_candidate))
+        return junction_list     
     else:
         # no ts tag in the bam
-        intron_start_candidate1 = [start - window + m.start() 
+        junction_list = []
+        intron_start_candidate = [start - window + m.start() 
                                     for m in re.finditer("GT",donor_pattern)]
-        intron_end_candidate1 = [end - window + m.start()
+        intron_end_candidate = [end - window + m.start()
                     for m in re.finditer("AG",acceptor_pattern)]
-        intron_start_candidate2 = [start - window + m.start() 
+        if intron_start_candidate and intron_end_candidate:            
+            junction_list += list(itertools.product(
+                            intron_start_candidate, intron_end_candidate))
+        intron_start_candidate = [start - window + m.start() 
                                     for m in re.finditer("CT",donor_pattern)]
-        intron_end_candidate2 = [end - window + m.start()
+        intron_end_candidate = [end - window + m.start()
                     for m in re.finditer("AC",acceptor_pattern)]
+        if intron_start_candidate and intron_end_candidate:            
+            junction_list += list(itertools.product(
+                            intron_start_candidate, intron_end_candidate))
+        
+        if find_ATAC:
+            intron_start_candidate = [start - window + m.start() 
+                                        for m in re.finditer("AT",donor_pattern)]
+            intron_end_candidate = [end - window + m.start()
+                        for m in re.finditer("AC",acceptor_pattern)]
+            
+            if intron_start_candidate and intron_end_candidate:            
+                junction_list += list(itertools.product(
+                                intron_start_candidate, intron_end_candidate))  
+            intron_start_candidate = [start - window + m.start() 
+                                        for m in re.finditer("GT",donor_pattern)]
+            intron_end_candidate = [end - window + m.start()
+                        for m in re.finditer("AT",acceptor_pattern)]
+            if intron_start_candidate and intron_end_candidate:            
+                junction_list += list(itertools.product(
+                                intron_start_candidate, intron_end_candidate))            
 
-        candidate_tuples = []
-        if intron_start_candidate1 and intron_end_candidate1:
-            candidate_tuples += list(itertools.product(
-                intron_start_candidate1, intron_end_candidate1))
-        if intron_start_candidate2 and intron_end_candidate2:
-            candidate_tuples += list(itertools.product(
-                intron_start_candidate2, intron_end_candidate2))
-        return candidate_tuples
+        if find_GCAG:
+            intron_start_candidate = [start - window + m.start() 
+                                        for m in re.finditer("GC",donor_pattern)]
+            intron_end_candidate = [end - window + m.start()
+                        for m in re.finditer("AG",acceptor_pattern)]
+            
+            if intron_start_candidate and intron_end_candidate:            
+                junction_list += list(itertools.product(
+                                intron_start_candidate, intron_end_candidate))
+
+            intron_start_candidate = [start - window + m.start() 
+                                        for m in re.finditer("CT",donor_pattern)]
+            intron_end_candidate = [end - window + m.start()
+                        for m in re.finditer("GC",acceptor_pattern)]
+            if intron_start_candidate and intron_end_candidate:            
+                junction_list += list(itertools.product(
+                                intron_start_candidate, intron_end_candidate))
+        return junction_list
+
 
 def candidate_motif_generator(chrID, candidates_tuple, 
                               flank_size, ref_FastaFile, pattern_preference):
