@@ -260,10 +260,34 @@ def parse_arg():
     if not alignment_file or not fast5_dir or not genome_ref:
         helper.err_msg("Error: Missing input files.") 
         sys.exit(1)        
+    
+    if not os.path.isfile(alignment_file):
+        helper.err_msg(
+            "Input Error: Alignemnt file '{}' doesn't exist.".format(alignment_file)) 
+        sys.exit(1)  
+
+    if not os.path.isfile(fast5_dir):
+        helper.err_msg(
+            "Input Error: Fast5 directory '{}' doesn't exist.".format(fast5_dir)) 
+        sys.exit(1)  
+
+    if not os.path.isfile(genome_ref):
+        helper.err_msg(
+            "Input Error: Fast5 directory '{}' doesn't exist.".format(genome_ref)) 
+        sys.exit(1)  
 
     if include_mapped_junc and min_JAQ_support > 1:
         helper.err_msg("Error: Invalid value for '--min_JAQ_support', value range: 0-1") 
-        sys.exit(1)        
+        sys.exit(1)      
+
+    if anno_fn and not os.path.isfile(anno_fn):
+        helper.err_msg(
+            "Input Error: Annotation file '{}' doesn't exist.".format(anno_fn)) 
+        sys.exit(1)  
+    
+
+    
+
 
     # choose the version of dtw (sum: minimize the sum of cost for the path)
     def dtw_local_alignment(candidate_squiggle, junction_squiggle, 
@@ -574,9 +598,9 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                                         pattern_preference = PATTERN_PREFERENCE)
 
         # adjust annotated junction (if provided)
-        # if len(anno_site_candidate_tuples):
-        #     for junc in anno_site_candidate_tuples:
-        #         candidate_preference[candidate_tuples.index(junc)] = 4
+        if len(anno_site_candidate_tuples):
+            for junc in anno_site_candidate_tuples:
+                candidate_preference[candidate_tuples.index(junc)] = 4
         if len(anno_candidate_tuples):
             for junc in anno_candidate_tuples:
                 candidate_preference[candidate_tuples.index(junc)] = 4
@@ -619,7 +643,8 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                             read, motif_start_ref, motif_end_ref)
         
         if not jwr_loc_read:
-            failed_jwr = write_err_msg(failed_jwr, jwr, 'Fail to get the JWR bases in read.')
+            failed_jwr = write_err_msg(failed_jwr, jwr, 
+             'Fail to get JWR bases in the read because mapped exon is too short.')
             continue
 
      
@@ -680,7 +705,8 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                     0: "non GT-AG",
                     1: "GT(-)-AG(-)",
                     2: "GT(+)-AG(-) or GT(-)-AG(+)",
-                    3: "GT(+)-AG(+) or annotated"
+                    3: "GT(+)-AG(+)",
+                    4: "annotated"
                 }
                 # minimap2 candidate as reference
                 matched_candidate_ref = squiggle_match[index_m]
