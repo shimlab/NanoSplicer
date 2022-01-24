@@ -266,7 +266,7 @@ def parse_arg():
             "Input Error: Alignemnt file '{}' doesn't exist.".format(alignment_file)) 
         sys.exit(1)  
 
-    if not os.path.isfile(fast5_dir):
+    if not os.path.isdir(fast5_dir):
         helper.err_msg(
             "Input Error: Fast5 directory '{}' doesn't exist.".format(fast5_dir)) 
         sys.exit(1)  
