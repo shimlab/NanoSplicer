@@ -550,7 +550,7 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
             nearby_site2 = sub_d[(np.abs(sub_d.site2 - jwr.loc[1]) <= window)].site2
             
 
-            if len(nearby_site1) & len(nearby_site2):
+            if len(nearby_site1) and len(nearby_site2):
                 anno_site_candidate_tuples = \
                     set(itertools.product(nearby_site1, nearby_site2))
 
