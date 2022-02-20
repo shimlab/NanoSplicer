@@ -87,7 +87,7 @@ Options:
 ```
 ### Example: find all JWRs from reads mapped to region on chromosome 1: chr1:5296679-5297165
 ``` 
-python3 JWR_checker.py –-chrID=chr1 –-genome-loc=5296679-5297165  --output_csv input.bam example.h5
+python3 JWR_checker.py --chrID=chr1 --genome-loc=5296679-5297165 --output_csv input.bam example.h5
 ```
 ## JWR_subset.py
 Subset the result from the JWR_checker. Based on our performance assessment, JWRs with high junction alignment quality (JAQ) are usually accurately mapped to their respective splice junctions. A subset of JWRs can be obtained by only selecting JWRs with a JAQ at or below a user-defined threshold. By default, JWR_subset.py selects all JWRs with a JAQ of 0.95 or less. **Note:** Currently `JWR_subset` only takes the HDF5 file from `JWR_checker` as input and returns the filtered subset back in HDF5 format. A table in CSV format can also be output with `--output_csv`.
