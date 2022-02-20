@@ -106,7 +106,7 @@ Options:
 ```
 ### Example: subset the JWRs at a specified genomic location to retain only those with a JAQ <=0.8
 ``` 
-python3 JWR_subset.py –-chrID=chr1 –-genome-loc=5296679-5297165 --JAQ_thres=0.8  --output_csv input.h5 output.h5
+python3 JWR_subset.py --chrID=chr1 --genome-loc=5296679-5297165 --JAQ_thres=0.8 --output_csv input.h5 output.h5
 ```
 
 ## NanoSplicer.py
