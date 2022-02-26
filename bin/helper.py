@@ -16,12 +16,10 @@ def reverse_complement(seq):
 	Returns: <str>
 		reverse_complement seq
 	'''
-	complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A', 'a': 't', 'c': 'g', 'g': 'c', 't': 'a'}
-	for element in seq:
-		if element not in complement.keys():
-			print("Error in reverse_complement!!Bad bases in the seq.")
-			sys.exit(0)
-	letters = [complement[base] for base in seq]
+	comp = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A', 
+					'a': 't', 'c': 'g', 'g': 'c', 't': 'a'}
+	letters = \
+		[comp[base] if base in comp.keys() else base for base in seq]
 	return ''.join(letters)[::-1]
 
 # tombo expected squiggle

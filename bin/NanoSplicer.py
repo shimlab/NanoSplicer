@@ -55,12 +55,15 @@ import numpy as np
 import re
 import fcntl
 import pysam
+import itertools
 from tqdm import tqdm
 from intervaltree import Interval
 from intervaltree import IntervalTree
 from pathlib import Path
 from ont_fast5_api.fast5_interface import get_fast5_file        
 from scipy.stats.mstats import theilslopes
+from tombo import tombo_helper, tombo_stats, resquiggle
+
 
 # denosing
 #from skimage.restoration import denoise_wavelet
@@ -85,26 +88,40 @@ def parse_arg():
                     Number of threads used <default: # of available cpus - 1>.
 
         More option on the candidate splice junctions (optional):
+            By default, for each JWR, NanoSplicer includes the mapped splice junction and all GT-AG 
+            junctions nearby, use the following options to choose candidates in different ways.
+            --GCAG_junction
+                Search for the GC-AG junctions nearby
+            --ATAC_junction
+                Search for the AT-AC junctions nearby
+
             User-provided splice junction (from annotation or short-read mapping):
-            --junction_BED      
+            --junction_BED=<BED file>      
                     User-provided BED file containing known splice junctions. The BED 
                     file can convert from genome annotation or short read mapping result. 
                     If provided, NanoSplicer will include all splice junctions in the BED file
                     as candidates with highest preference level. e.g. --junction_BED='xx.bed'
-            --non_canonical_junctions
+            --non_canonical_junctions=<BED file>  
                     User-provided BED file containing known splice junctions. The BED 
                     file be converted from genome annotation (GTF/GFF file) or short read mapping 
                     result. If provided, NanoSplicer will include non-canonical (i.e., non GT-AT) 
                     splice junctions in the BED file as candidates with highest preference level.
                     e.g. --non_canonical_junctions='xx.bed'
+            --provided_junction_only
+                    Only consider the junctions in the provided BED file. With this option, 
+                    junctions not in the BED file will not be considered as candidates (even if they are
+                    specified by other option, e.g. "--GCAG_junction", "--supported_junc_as_candidate").
+                    Besides, no Squiggle Information Quality (SIQ) will be calculated if the JWR is close to only 
+                    one junction provided.
+
             Long-read mapping:
             --supported_junc_as_candidate
                     Add nearby long read supported splice junctions as candidates (if they have 
                     not been included yet).
-            --min_support
+            --min_support=<int>
                     Minimum support, i.e. number of JWRs (with minimum JAQ) mapped ,for
                      an additional splice junction to be added to candidate list <default: 3>
-            --min_JAQ_support
+            --min_JAQ_support=<int>
                     Minimum JAQ (range: 0-1) for JWRs that counted as supports. <default: 0>
 
         For developer only:
@@ -136,7 +153,8 @@ def parse_arg():
                     "annotation_bed=", "plot_alignment", "plot_LR", 
                     "non_canonical_junctions=", 'junction_BED=', 
                     'min_support=', 'supported_junc_as_candidate', 
-                    'min_JAQ_support=', 'threads='])
+                    'min_JAQ_support=', 'threads=', "GCAG_junction",
+                    "ATAC_junction", "provided_junction_only"])
     except getopt.GetoptError:
         helper.err_msg("Error: Invalid argument input") 
         print_help()
@@ -167,12 +185,15 @@ def parse_arg():
     trim_model = 0
     dtw_adj = False
     bandwidth = 0.4
-    flank_size = 20
+    flank_size = 21
     window = 10
     include_mapped_junc = False
     min_support = 3
     min_JAQ_support = 0
     n_process = mp.cpu_count()-1
+    find_GCAG=FIND_GCAG
+    find_ATAC=FIND_ATAC
+    provided_junction_only = False
 
     for opt, arg in opts:
         if opt in  ("-h", "--help"):
@@ -214,7 +235,12 @@ def parse_arg():
             min_JAQ_support = int(arg)
         elif opt == "--threads":
             n_process = min(int(arg), n_process)
-               
+        elif opt == "--GCAG_junction":
+            find_GCAG = True
+        elif opt == "--ATAC_junction":
+            find_ATAC = True
+        elif opt == "--provided_junction_only":
+            provided_junction_only = True
 
     # import global variable from config file 
     mdl = importlib.import_module(config_file)
@@ -234,10 +260,34 @@ def parse_arg():
     if not alignment_file or not fast5_dir or not genome_ref:
         helper.err_msg("Error: Missing input files.") 
         sys.exit(1)        
+    
+    if not os.path.isfile(alignment_file):
+        helper.err_msg(
+            "Input Error: Alignemnt file '{}' doesn't exist.".format(alignment_file)) 
+        sys.exit(1)  
+
+    if not os.path.isdir(fast5_dir):
+        helper.err_msg(
+            "Input Error: Fast5 directory '{}' doesn't exist.".format(fast5_dir)) 
+        sys.exit(1)  
+
+    if not os.path.isfile(genome_ref):
+        helper.err_msg(
+            "Input Error: Fast5 directory '{}' doesn't exist.".format(genome_ref)) 
+        sys.exit(1)  
 
     if include_mapped_junc and min_JAQ_support > 1:
         helper.err_msg("Error: Invalid value for '--min_JAQ_support', value range: 0-1") 
-        sys.exit(1)        
+        sys.exit(1)      
+
+    if anno_fn and not os.path.isfile(anno_fn):
+        helper.err_msg(
+            "Input Error: Annotation file '{}' doesn't exist.".format(anno_fn)) 
+        sys.exit(1)  
+    
+
+    
+
 
     # choose the version of dtw (sum: minimize the sum of cost for the path)
     def dtw_local_alignment(candidate_squiggle, junction_squiggle, 
@@ -252,17 +302,19 @@ def parse_arg():
             bandwidth, trim_model, trim_signal, flank_size, \
              window, pd_file, anno_fn, non_cano_anno_fn, \
              plot_alignment, plot_LR, include_mapped_junc, min_support,\
-             min_JAQ_support, n_process
+             min_JAQ_support, n_process, find_GCAG, find_ATAC, \
+             provided_junction_only
 
 def main():
     # parse command line argument
     fast5_dir, out_fn, alignment_file, genome_ref, bandwidth, trim_model, \
         trim_signal, flank_size, window, pd_file, anno_fn, non_cano_anno_fn, \
         plot_alignment, plot_LR, include_mapped_junc, min_support,\
-        min_JAQ_support, n_process = parse_arg()
+        min_JAQ_support, n_process, find_GCAG, find_ATAC, \
+             provided_junction_only= parse_arg()
 
     # output filenames
-    error_fn = out_fn + '_error_summary.tsv'
+    error_fn = out_fn + '_error_summary.csv'
     prob_table_fn = out_fn + '_prob_table.tsv'
     jwr_bed_fn = out_fn + '_jwr.bed'
     support_bed_fn = out_fn + '_junc_support.bed'
@@ -271,29 +323,43 @@ def main():
     directory = os.path.dirname(prob_table_fn)
     Path(directory).mkdir(parents=True, exist_ok=True)
 
+    # # check file exist
+    # if os.path.isfile(prob_table_fn):
+    #     helper.err_msg("File '{}' exists, please re-try by specify another output filename or remove the existing file.".format(prob_table_fn)) 
+    #     sys.exit(1)
+    # if os.path.isfile(jwr_bed_fn):
+    #     helper.err_msg("File '{}' exists, please re-try by specify another output filename or remove the existing file.".format(jwr_bed_fn)) 
+    #     sys.exit(1)
+
     # check file exist
-    if os.path.isfile(prob_table_fn):
-        helper.err_msg("File '{}' exists, please re-try by specify another output filename or remove the existing file.".format(prob_table_fn)) 
-        sys.exit(1)
-    if os.path.isfile(jwr_bed_fn):
-        helper.err_msg("File '{}' exists, please re-try by specify another output filename or remove the existing file.".format(jwr_bed_fn)) 
-        sys.exit(1)
+    if os.path.isfile(prob_table_fn) or os.path.isfile(jwr_bed_fn):
+        i = ''
+        while i not in ['NO', 'N', 'Y','YES']:
+            i = input("File '{}' and/or '{}' exists, would you like to overwrite it? [Y|N]?".format(prob_table_fn, jwr_bed_fn)) 
+            i = i.upper()
+            if i in ['Y','YES']:
+                os.remove(jwr_bed_fn)
+                os.remove(prob_table_fn)
+                break
+            if i in ['NO', 'N']:
+                helper.err_msg("File '{}' and/or '{}' exists, please re-try by specify another output filename prefix.".format(prob_table_fn, jwr_bed_fn)) 
+                sys.exit(1)
+        
     
     # creat empty file will header
-    else:
-        f = open(prob_table_fn, "w")
-        f.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
-                                            'read_id',
-                                            'reference_name',
-                                            'inital_junction',
-                                            'JAQ',
-                                            'candidates',
-                                            'candidate_sequence_motif_preference',
-                                            'SIQ',
-                                            'prob_uniform_prior',
-                                            'prob_seq_pattern_prior',
-                                            'best_prob'
-                                             ))
+    f = open(prob_table_fn, "w")
+    f.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
+                                        'read_id',
+                                        'reference_name',
+                                        'inital_junction',
+                                        'JAQ',
+                                        'candidates',
+                                        'candidate_sequence_motif_preference',
+                                        'SIQ',
+                                        'prob_uniform_prior',
+                                        'prob_seq_pattern_prior',
+                                        'best_prob'
+                                            ))
     f.close()
 
     # import data
@@ -329,6 +395,8 @@ def main():
     executor = concurrent.futures.ProcessPoolExecutor(n_process)
     pbar = tqdm(total = len(fast5_paths))
 
+
+
     futures = [executor.submit(run_multifast5, 
                                 f, 
                                 jwr_df, 
@@ -344,7 +412,10 @@ def main():
                                 anno_df,
                                 map_support_junc_df,
                                 plot_alignment,
-                                plot_LR) for f in fast5_paths]
+                                plot_LR,
+                                find_GCAG, 
+                                find_ATAC,
+                                provided_junction_only) for f in fast5_paths]
     
     for future in as_completed(futures):
         pbar.update(1)
@@ -378,7 +449,8 @@ def write_err_msg(d, jwr, error_msg):
 def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile, 
                     window, flank_size, trim_model, trim_signal,
                     bandwidth, prob_table_fn, jwr_bed_fn, anno_df, 
-                    map_support_junc_df, plot_alignment, plot_LR):
+                    map_support_junc_df, plot_alignment, plot_LR,find_GCAG, 
+                    find_ATAC, provided_junction_only):
     '''
     Description:
         Run a single process within a certain multi-read fast5
@@ -438,50 +510,88 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
             continue
 
         # get candidate motifs
-            # find GT-AG pattern in a window nearby
-        candidate_tuples = canonical_site_finder(read, jwr.loc, 
+            # find GT-AG pattern in a window nearby (set)
+        if not provided_junction_only:
+            candidate_tuples = set(canonical_site_finder(read, jwr.loc, 
                                           ref_FastaFile, 
-                                          window, jwr.chrID)
-
-        if len(map_support_junc_df):
-            # mapped splice junction in a window nearby
-            temp_d = map_support_junc_df[
-                    (map_support_junc_df.chrID ==  jwr.chrID) &
-                    (np.abs(map_support_junc_df.site1 - jwr.loc[0]) <= window) & 
-                    (np.abs(map_support_junc_df.site2 - jwr.loc[1]) <= window)
-                        ]
-            if len(temp_d):
-                map_candidate_tuples = \
-                    list(temp_d.apply(
-                          lambda row: (row.site1, row.site2), axis = 1))
-            else:
-                map_candidate_tuples = []
-            # get union of GT-AG candidate and annotation candidate
-            candidate_tuples =\
-                    list(set(candidate_tuples) | set(map_candidate_tuples))
+                                          window, jwr.chrID,find_GCAG=find_GCAG, 
+                                          find_ATAC=find_ATAC))
 
         
+            if len(map_support_junc_df):
+                # mapped splice junction in a window nearby
+                temp_d = map_support_junc_df[
+                        (map_support_junc_df.chrID ==  jwr.chrID) &
+                        (np.abs(map_support_junc_df.site1 - jwr.loc[0]) <= window) & 
+                        (np.abs(map_support_junc_df.site2 - jwr.loc[1]) <= window)
+                            ]
+                if len(temp_d):
+                    map_candidate_tuples = \
+                        set(temp_d.apply(
+                            lambda row: (row.site1, row.site2), axis = 1))
+                else:
+                    map_candidate_tuples = set()
+                # get union of GT-AG candidate and annotation candidate
+                candidate_tuples =\
+                        candidate_tuples | map_candidate_tuples
+
+        else:
+            candidate_tuples = set()
+
+        anno_candidate_tuples = set()
+        anno_site_candidate_tuples = set()
         if len(anno_df):
             # annotation in a window nearby
-            temp_d = anno_df[
-                    (anno_df.chrID ==  jwr.chrID) &
-                    (np.abs(anno_df.site1 - jwr.loc[0]) <= window) & 
-                    (np.abs(anno_df.site2 - jwr.loc[1]) <= window)
-                        ]
-            if len(temp_d):
+            sub_d = anno_df[anno_df.chrID ==  jwr.chrID]
+
+            s1_in_win_d = sub_d[(np.abs(sub_d.site1 - jwr.loc[0]) <= window)]
+            s12_in_win_d = s1_in_win_d[
+                (np.abs(s1_in_win_d.site2 - jwr.loc[1]) <= window)]
+
+            nearby_site1 = s1_in_win_d.site1
+            nearby_site2 = sub_d[(np.abs(sub_d.site2 - jwr.loc[1]) <= window)].site2
+            
+
+            if len(nearby_site1) and len(nearby_site2):
+                anno_site_candidate_tuples = \
+                    set(itertools.product(nearby_site1, nearby_site2))
+
+            if len(s12_in_win_d):
                 anno_candidate_tuples = \
-                    list(temp_d.apply(
+                    set(s12_in_win_d.apply(
                           lambda row: (row.site1, row.site2), axis = 1))
-            else:
-                anno_candidate_tuples = []
+                        
             # get union of GT-AG candidate and annotation candidate
             candidate_tuples =\
-                    list(set(candidate_tuples) | set(anno_candidate_tuples))
-        else:
-            anno_candidate_tuples = []
+                candidate_tuples | anno_candidate_tuples | anno_site_candidate_tuples
 
-        if jwr.loc not in candidate_tuples:
+
+        
+        
+        # candidate junction set to list
+        candidate_tuples = list(candidate_tuples)
+
+        # add mapped junction
+        if jwr.loc not in candidate_tuples and not provided_junction_only:
             candidate_tuples.append(jwr.loc)
+
+        # output if only one candidate in provided junction only mode
+        if provided_junction_only and len(candidate_tuples)<=1:
+                f = open(prob_table_fn, "a")
+                f.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
+                    jwr.id,
+                    jwr.chrID,
+                    str(jwr.loc),
+                    '{:.3f}'.format(jwr.JAQ),
+                    ','.join(['('+str(x)+','+str(y)+')' for x,y in candidate_tuples]),
+                    '4',
+                    'NA', # SIQ
+                    '1' if len(candidate_tuples) else 'NA',
+                    '1' if len(candidate_tuples) else 'NA',
+                    '1' if len(candidate_tuples) else 'NA'))
+
+                f.close()
+                continue
 
         candidate_motif, motif_start_ref, motif_end_ref, \
             candidate_preference = candidate_motif_generator(
@@ -490,20 +600,26 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                                         pattern_preference = PATTERN_PREFERENCE)
 
         # adjust annotated junction (if provided)
+        # if len(anno_site_candidate_tuples):
+        #     for junc in anno_site_candidate_tuples:
+        #         candidate_preference[candidate_tuples.index(junc)] = 4
         if len(anno_candidate_tuples):
             for junc in anno_candidate_tuples:
-                candidate_preference[candidate_tuples.index(junc)] = 3
-        
+                candidate_preference[candidate_tuples.index(junc)] = 4
         candidate_preference = np.array(candidate_preference)
         
         if not candidate_motif:# or len(candidate_motif) == 1:  
             failed_jwr = write_err_msg(failed_jwr, jwr, 'Fail to find candidates.')
             continue
-        index_m = candidate_tuples.index(jwr.loc)
+        
+
+        # choose the base candidate
+        index_m = candidate_tuples.index(jwr.loc) if jwr.loc in candidate_tuples else 0 
 
         # check reverse
         candidate_motif_rev = [helper.reverse_complement(seq) 
                                 for seq in candidate_motif]
+
         if read.is_reverse:
             candidates_for_read = candidate_motif_rev
         else:
@@ -529,7 +645,8 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                             read, motif_start_ref, motif_end_ref)
         
         if not jwr_loc_read:
-            failed_jwr = write_err_msg(failed_jwr, jwr, 'Fail to get the JWR bases in read.')
+            failed_jwr = write_err_msg(failed_jwr, jwr, 
+             'Fail to get JWR bases in the read because mapped exon is too short.')
             continue
 
      
@@ -590,7 +707,8 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                     0: "non GT-AG",
                     1: "GT(-)-AG(-)",
                     2: "GT(+)-AG(-) or GT(-)-AG(+)",
-                    3: "GT(+)-AG(+) or annotated"
+                    3: "GT(+)-AG(+)",
+                    4: "annotated"
                 }
                 # minimap2 candidate as reference
                 matched_candidate_ref = squiggle_match[index_m]
@@ -684,7 +802,8 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                     
                     #figure title
                     if True:
-                        ax.set_title('Log LR: {:.2f}, average Log-Lik: {:.2f}, post probability: {:.3f}, candidate_preference: {}, post probability(seq prior ratio = 9): {:.3f} '.format(
+                        ax.set_title('{} Log LR: {:.2f}, average Log-Lik: {:.2f}, post probability: {:.3f}, candidate_preference: {}, post probability(seq prior ratio = 9): {:.3f} '.format(
+                            candidate_tuples[cand],
                             dist_seg_LR[cand], 
                             normalise_loglik(
                                 np.mean(
@@ -697,7 +816,8 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                             preference_text_dict[candidate_preference[cand]], 
                             post_prob_prior[cand]), y=1.0, pad=-14)
 
-                fig.suptitle('minimap2 candidate likelihood: {:.2f}, average Log-Lik: {:.2f}, post probability: {:.3f}, candidate_preference: {}, post probability(seq prior ratio = 9): {:.3f}'.format(
+                fig.suptitle('{} minimap2 candidate likelihood: {:.2f}, average Log-Lik: {:.2f}, post probability: {:.3f}, candidate_preference: {}, post probability(seq prior ratio = 9): {:.3f}'.format(
+                        candidate_tuples[index_m],
                         dist_seg_LR[index_m], 
                         normalise_loglik(
                             np.mean(even_wise_log_likelihood(junction_squiggle, squiggle_match_list[index_m], max_z=MAX_Z)),
@@ -1038,7 +1158,6 @@ def tombo_squiggle_to_basecalls(multi_fast5, AlignedSegment):
                 #   - read_start_rel_to_raw: start of rsqgl_results.raw_signal and rsqgl_results.segs within original all_raw_signal
                 #   - segs: start position for each model-able base (should be one longer than length of genome_seq to include last end point) 
     '''
-    from tombo import tombo_helper, tombo_stats, resquiggle
     # extract read info
     #fast5s_f = get_fast5_file(read_fast5_fn, 'r')
     #fast5_data = h5py.File

@@ -27,6 +27,10 @@ SPIKE_THRES = 4
 UNIFORM_DWELL = 4
 MINIMUM_POINT_FOR_DIST_SEG = 4
 
+# candidate generate
+FIND_GCAG = False
+FIND_ATAC = False
+
 # prior ratio for sequence pattern
 PATTERN_PREFERENCE = True
 PRIOR_RATIO = 9
