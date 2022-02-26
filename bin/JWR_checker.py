@@ -257,9 +257,9 @@ def main():
             warning_text =\
                 '''
                     Warning: Mismatches are not explicitly labeled in the CIGAR from the input BAM file. 
-                    The JAQ can still be calculated but mismatched bases will be treated as matched bases. 
+                    The JAQs can still be calculated but mismatched bases will be treated as matched bases. 
                     It is recommonded to update the mapping setting (e.g., use '--eqx' option in minimap2) 
-                    to take into account the mismatches in the JAQ calculation.
+                    to label the mismatches in CIGAR.
                 '''
             helper.warning_msg(textwrap.dedent(warning_text))
 
