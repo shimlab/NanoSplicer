@@ -88,14 +88,16 @@ def main():
     
     if param.best_jaq:
         d[d.JAQ <= param.best_jaq].to_hdf(param.output_h5, 'data')
+        if param.output_csv:
+            d[d.JAQ <= param.best_jaq].to_csv(param.output_h5 + ".csv")
         d[d.JAQ > param.best_jaq].to_hdf(param.output_h5, 'skipped')
     else:
         d.to_hdf(param.output_h5, 'data')
     
     print('\n\nJWR_subset select {} out of {} JWRs\n\n'.format(len(d[d.JAQ <= param.best_jaq]), original_total))
 
-    if param.output_csv:
-        d.to_csv(param.output_h5 + ".csv")
+    
+        
 
 
 if __name__ == '__main__':

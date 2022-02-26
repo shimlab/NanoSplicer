@@ -314,7 +314,7 @@ def main():
              provided_junction_only= parse_arg()
 
     # output filenames
-    error_fn = out_fn + '_error_summary.tsv'
+    error_fn = out_fn + '_error_summary.csv'
     prob_table_fn = out_fn + '_prob_table.tsv'
     jwr_bed_fn = out_fn + '_jwr.bed'
     support_bed_fn = out_fn + '_junc_support.bed'
@@ -338,6 +338,8 @@ def main():
             i = input("File '{}' and/or '{}' exists, would you like to overwrite it? [Y|N]?".format(prob_table_fn, jwr_bed_fn)) 
             i = i.upper()
             if i in ['Y','YES']:
+                os.remove(jwr_bed_fn)
+                os.remove(prob_table_fn)
                 break
             if i in ['NO', 'N']:
                 helper.err_msg("File '{}' and/or '{}' exists, please re-try by specify another output filename prefix.".format(prob_table_fn, jwr_bed_fn)) 
@@ -598,9 +600,9 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                                         pattern_preference = PATTERN_PREFERENCE)
 
         # adjust annotated junction (if provided)
-        if len(anno_site_candidate_tuples):
-            for junc in anno_site_candidate_tuples:
-                candidate_preference[candidate_tuples.index(junc)] = 4
+        # if len(anno_site_candidate_tuples):
+        #     for junc in anno_site_candidate_tuples:
+        #         candidate_preference[candidate_tuples.index(junc)] = 4
         if len(anno_candidate_tuples):
             for junc in anno_candidate_tuples:
                 candidate_preference[candidate_tuples.index(junc)] = 4
