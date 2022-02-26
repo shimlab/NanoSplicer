@@ -17,6 +17,7 @@
     **'output_prob_table.tsv'**: Probability table for 9 JWRs
     **'output_jwr.bed'**: NaoSplicer identification in BED12 format (7 JWRs)
     **'output_error_summary.csv'**: JWRs that failed to run by NanoSplicer (0 JWRs)
+    
     *see https://github.com/shimlab/NanoSplicer#output for more detailed explaination of 'output_prob_table.tsv' and 'output_jwr.bed'
     
 
