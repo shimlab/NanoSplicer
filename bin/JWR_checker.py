@@ -250,6 +250,25 @@ def main():
     # read command line arguments
     param = JWR_checker_param()
 
+    # check mismatch recorded in CIGAR
+    algn_file = pysam.AlignmentFile(param.bamfile)
+    for read in algn_file.fetch():
+        if 'M' in read.cigarstring:
+            warning_text =\
+                '''
+                    Warning:  Mismatches were not recorded in the CIGAR from the input BAM file. The JAQ
+                    can still be calculated but mismatched bases will be treated as matched base. Please 
+                    update the mapping setting (e.g., use '--eqx' option in minimap2) to take into account 
+                    the mismatches in the JAQ calculation (recommanded).
+                '''
+            helper.warning_msg(textwrap.dedent(warning_text))
+
+            break
+        if '=' in read.cigarstring or 'X' in read.cigarstring:
+            break
+
+    print("Searching for JWRs ...\n\n")
+
     # get splice junctions from BAM
     algn_file = pysam.AlignmentFile(param.bamfile)
     reads_fetch = algn_file.fetch(param.chrID,
