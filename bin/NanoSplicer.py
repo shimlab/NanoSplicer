@@ -338,8 +338,10 @@ def main():
             i = input("File '{}' and/or '{}' exists, would you like to overwrite it? [Y|N]?".format(prob_table_fn, jwr_bed_fn)) 
             i = i.upper()
             if i in ['Y','YES']:
-                os.remove(jwr_bed_fn)
-                os.remove(prob_table_fn)
+                if os.path.isfile(jwr_bed_fn):
+                    os.remove(jwr_bed_fn)
+                if os.path.isfile(prob_table_fn):
+                    os.remove(prob_table_fn)
                 break
             if i in ['NO', 'N']:
                 helper.err_msg("File '{}' and/or '{}' exists, please re-try by specify another output filename prefix.".format(prob_table_fn, jwr_bed_fn)) 
