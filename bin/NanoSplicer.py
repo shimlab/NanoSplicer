@@ -63,7 +63,8 @@ from ont_fast5_api.fast5_interface import get_fast5_file
 from scipy.stats.mstats import theilslopes
 
 # denosing
-#from skimage.restoration import denoise_wavelet
+from skimage.restoration import denoise_wavelet
+
 import helper
 from junction_identification import find_candidate, canonical_site_finder, \
                                                     candidate_motif_generator
@@ -166,7 +167,7 @@ def parse_arg():
     trim_signal = 6
     trim_model = 0
     dtw_adj = False
-    bandwidth = 0.4
+    bandwidth = BANDWIDTH_PROP
     flank_size = 20
     window = 10
     include_mapped_junc = False
@@ -559,19 +560,26 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
         for j, candidate in enumerate(candidates_for_read):
             candidate_squiggle = np.array(model_dic[candidate],float)
             
+            if MEDIAN_DENOISE:
+                junction_squiggle = median_smoother(junction_squiggle,MEDIAN_DENOISE_WIN)
+
             if WAVELET_DENOISE:
                 wavelet_levels = int(np.ceil(np.log2(len(junction_squiggle))))
-                junction_squiggle_wav = \
+                junction_squiggle = \
                     denoise_wavelet(junction_squiggle, method='BayesShrink', 
                               mode='soft', wavelet_levels=wavelet_levels,
                                wavelet='sym8', rescale_sigma='True')
-                path , score, cum_matrix = \
-                    dtw_local_alignment(candidate_squiggle = candidate_squiggle, 
-                                        junction_squiggle = junction_squiggle_wav)
-            else:
-                path , score, cum_matrix = \
-                    dtw_local_alignment(candidate_squiggle = candidate_squiggle, 
-                                    junction_squiggle = junction_squiggle)
+                # junction_squiggle_wav = \
+                #     denoise_wavelet(junction_squiggle, method='BayesShrink', 
+                #               mode='soft', wavelet_levels=wavelet_levels,
+                #                wavelet='sym8', rescale_sigma='True')
+                # path , score, cum_matrix = \
+                #     dtw_local_alignment(candidate_squiggle = candidate_squiggle, 
+                #                         junction_squiggle = junction_squiggle_wav)
+
+            path , score, cum_matrix = \
+                dtw_local_alignment(candidate_squiggle = candidate_squiggle, 
+                                junction_squiggle = junction_squiggle)
 
             # log likelihood (from DTW score to log likelihood)
             score_dict[j] = -1 * score
@@ -714,7 +722,7 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                 fig_dir = os.path.dirname(prob_table_fn)
                 fig.savefig(
                     os.path.join(
-                        fig_dir, "{}_median_pairwise.png".format(read.qname)), 
+                        fig_dir, "{}_{}.png".format(read.qname,PLOT_SUFFIX)), 
                                 format = 'png')
 
                 # fig.savefig(
@@ -1090,7 +1098,35 @@ def tombo_squiggle_to_basecalls(multi_fast5, AlignedSegment):
 
     return rsqgl_results, start_clip, end_clip, std_ref, sd_of_median
 
+
+def median_smoother(junction_squiggle, window_size = 3):
+    '''
+    denoise the original squiggle before DTW
+    method: 
+        replace the original signal by median of sliding windows (1st and last
+        points will be duplicated as paddings).
+    return:
+        np.array with len(junction_squiggle)
+
+    '''
+    # add padding
+    pad_start = np.repeat(junction_squiggle[0], np.ceil((window_size - 1) /2))
+    pad_end = np.repeat(junction_squiggle[-1], np.floor((window_size - 1) /2))
+    junction_squiggle = np.hstack([pad_start,junction_squiggle,pad_end])
+    return np.array(
+        [np.median(junction_squiggle[i:i+window_size]) 
+            for  i in range(len(junction_squiggle) - window_size + 1)])
+
+
 def median_denoise(junction_squiggle, squiggle_match_list):
+    '''
+    replace the original signal by segment median, which is defined by junction
+    squiggle to candidate squiggle matching
+
+    return:
+        np.array with len(junction_squiggle)
+    
+    '''
     median_junction_squiggle = np.array([])
     event = junction_squiggle[0:1]
     

@@ -16,9 +16,15 @@ DIST_SD = 0
 
 # wavelet denoising level
 WAVELET_DENOISE = False
+MEDIAN_DENOISE = False
+MEDIAN_DENOISE_WIN = 5
 
 # spike threshold
 SPIKE_THRES = 4
+
+# DTW
+BANDWIDTH_PROP = 0.4
+
 
 # Control the level of Wavelet denoise 
 #WAVELET_LEVEL = np.ceil(np.log(len(squiggle)))
@@ -35,6 +41,8 @@ PRIOR_RATIO_NON_GTAG = 1
 # output
 SAVE_DATA = False
 PLOT_ALIGNMENT = False
+PLOT_SUFFIX = 'alignment'
+
 PLOT_LR = False
 RESULT = True
 OUTPUT_FILENAME = './output'
