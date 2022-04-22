@@ -1396,7 +1396,9 @@ def get_junc_squiggle(tombo_results, tombo_start_clip, read_length,
     if not len(signal):
         return []
     else:
-        return np.array(signal, float)
+        signal = np.array(signal, float)
+        signal = signal[abs(signal) < spike_thres]
+        return signal
     
 
 
