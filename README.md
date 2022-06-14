@@ -223,3 +223,8 @@ If you find NanoSplcier useful for your work, please cite our paper:
 > junctions using Oxford Nanopore sequencing.* [You et al. (2021)][NanoSplicer-bioRxiv].
 
 [NanoSplicer-bioRxiv]: https://www.biorxiv.org/content/10.1101/2021.10.23.465402v1
+
+
+## Data availablity
+The data underlying the article "NanoSplicer: Accurate identification of splice junctions using Oxford Nanopore sequencing" are available in European Nucleotide Archive (ENA) at https://www.ebi.ac.uk/ena/browser/home under accession ERS7273757 and ERS7273453.
+
