@@ -353,7 +353,7 @@ def main():
     f.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n'.format(
                                         'read_id',
                                         'reference_name',
-                                        'inital_junction',
+                                        'initial_junction',
                                         'JAQ',
                                         'candidates',
                                         'candidate_sequence_motif_preference',

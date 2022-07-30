@@ -177,7 +177,7 @@ Optional candidates in `NanoSplicer.py`:
 The probability table contains 10 columns:
 1. **read_id**: the Nanopore id of the read that the JWR comes from
 2. **reference_name**: the mapped reference name of the read the JWR comes from
-3. **inital_junction**: initial mapped splice junction
+3. **initial_junction**: initial mapped splice junction
 4. **JAQ**: Junction alignment quality
 5. **candidates**: all candidate splice junctions 
 6. **candidate_sequence_motif_preference**: Based on known preferential use of specific intronic sequence patterns near splice junctions (0: *non GT-AG*, 1: *GT[C/T]-[A/G]AG*, 2: *GT[A/G]-[A/G]AG* or *GT[C/T]-AG[C/T]*, 3: *GT[A/G]-[C/T]AG* or user-provided junction)
