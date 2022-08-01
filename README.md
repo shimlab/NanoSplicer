@@ -114,37 +114,48 @@ Perform splice junction identification on the JWR_checker.py (or JWR_subset.py i
 Requires path to reads in fast5 (squiggle) format and a matched mapped .bam/.sam file for these reads. This is the same .bam file required for input into 
 `JWR_checker`.
 ```
-Usage: python3 {} [OPTIONS] <JWR_checker/JWR_subset hdf5 file>
-Options:
-    -i      .bam/.sam file (required)
-    -f      path to fast5s (required)
-    -r      Genome reference file (required)
-    -o      Prefix for output files <default: './output'>.
-    --threads
-            Number of threads used <default: # of available cpus - 1>.
-
-More option on the candidate splice junctions (optional):
-    User-provided splice junction (from annotation or short-read mapping):
-    --junction_BED      
-            User-provided BED file containing known splice junctions. The BED 
-            file can convert from genome annotation or short read mapping result. 
-            If provided, NanoSplicer will include all splice junctions in the BED file
-            as candidates with highest preference level. e.g. --junction_BED='xx.bed'
-    --non_canonical_junctions
-            User-provided BED file containing known splice junctions. The BED 
-            file be converted from genome annotation (GTF/GFF file) or short read mapping 
-            result. If provided, NanoSplicer will include non-canonical (i.e., non GT-AT) 
-            splice junctions in the BED file as candidates with highest preference level.
-            e.g. --non_canonical_junctions='xx.bed'
-    Long-read mapping:
-    --supported_junc_as_candidate
-            Add nearby long read supported splice junctions as candidates (if they have 
-            not been included yet).
-    --min_support
-            Minimum support, i.e. number of JWRs (with minimum JAQ) mapped ,for
-                an additional splice junction to be added to candidate list <default: 3>
-    --min_JAQ_support
-            Minimum JAQ (range: 0-1) for JWRs that counted as supports. <default: 0>
+        Usage: python3 NanoSplicer.py [OPTIONS] <JWR_checker/JWR_subset hdf5 file>
+        Options:
+            -i      .bam/.sam file (required)
+            -f      path to fast5s (required)
+            -r      Genome reference file (required)
+            -o      Prefix for output files <default: './output'>.
+            --threads
+                    Number of threads used <default: # of available cpus - 1>.
+        More option on the candidate splice junctions (optional):
+            By default, for each JWR, NanoSplicer includes the mapped splice junction and all GT-AG 
+            junctions nearby, use the following options to choose candidates in different ways.
+            --GCAG_junction
+                Search for the GC-AG junctions nearby
+            --ATAC_junction
+                Search for the AT-AC junctions nearby
+            User-provided splice junction (from annotation or short-read mapping):
+            --junction_BED=<BED file>      
+                    User-provided BED file containing known splice junctions. The BED 
+                    file can convert from genome annotation or short read mapping result. 
+                    If provided, NanoSplicer will include all splice junctions in the BED file
+                    as candidates with highest preference level. e.g. --junction_BED='xx.bed'
+            --non_canonical_junctions=<BED file>  
+                    User-provided BED file containing known splice junctions. The BED 
+                    file be converted from genome annotation (GTF/GFF file) or short read mapping 
+                    result. If provided, NanoSplicer will include non-canonical (i.e., non GT-AT) 
+                    splice junctions in the BED file as candidates with highest preference level.
+                    e.g. --non_canonical_junctions='xx.bed'
+            --provided_junction_only
+                    Only consider the junctions in the provided BED file. With this option, 
+                    junctions not in the BED file will not be considered as candidates (even if they are
+                    specified by other option, e.g. "--GCAG_junction", "--supported_junc_as_candidate").
+                    Besides, no Squiggle Information Quality (SIQ) will be calculated if the JWR is close to only 
+                    one junction provided.
+            Long-read mapping:
+            --supported_junc_as_candidate
+                    Add nearby long read supported splice junctions as candidates (if they have 
+                    not been included yet).
+            --min_support=<int>
+                    Minimum support, i.e. number of JWRs (with minimum JAQ) mapped ,for
+                     an additional splice junction to be added to candidate list <default: 3>
+            --min_JAQ_support=<int>
+                    Minimum JAQ (range: 0-1) for JWRs that counted as supports. <default: 0>
 ```
 
 ### Example: 
