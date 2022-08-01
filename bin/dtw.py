@@ -503,6 +503,8 @@ class dtw_res(object):
             plt.savefig(save_fig)
         else:
             plt.show()
+        plt.close()
+        
     def plot_cum_matrix(self, save_fig='', **kwargs):
         fig, axes = plt.subplots(nrows=1, figsize=(10,8))
         

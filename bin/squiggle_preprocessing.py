@@ -6,6 +6,7 @@ Created on Sun May  8 16:55:12 2022
 """
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 # segmentation function
@@ -30,21 +31,21 @@ class junction_squiggle_preprocessing:
             raw_cumsum[:-2*running_stat_width] -
             raw_cumsum[2*running_stat_width:]))[::-1]
     
-        cpts = [candidate_poss[0]]
+        cpts = []
         blacklist_pos = set()
     
-        for pos in candidate_poss[1:]:
+        for pos in candidate_poss:
             if pos not in blacklist_pos:
                 cpts.append(pos)
                 blacklist_pos.update(range(
                     pos-min_base_obs+1, pos+min_base_obs+1))
-        
+                
         if inplace:
             self.segment_break_points = np.array(cpts) + running_stat_width
         else:    
             return np.array(cpts) + running_stat_width
     def segment_summary(self, n_seg, min_base_obs, 
-                            running_stat_width,  method = 'median', inplace=False):
+                            running_stat_width,  method = 'median', inplace=False, plot_fig = False):
         '''
         Get an array of summary value in each segment:
         Parameters
@@ -63,6 +64,15 @@ class junction_squiggle_preprocessing:
             self.get_segment_break_point(min_base_obs, 
                                          running_stat_width, 
                                          inplace=True)
+        if plot_fig:
+            plt.figure(figsize=(30,5))
+            plt.plot(self.junction_squiggle)
+            plt.vlines(self.segment_break_points[:n_seg],
+                        min(self.junction_squiggle) ,
+                        max(self.junction_squiggle))
+            plt.savefig(f"{plot_fig}.png")
+            plt.close()
+
 
         if method == 'median':
             rst = np.array(

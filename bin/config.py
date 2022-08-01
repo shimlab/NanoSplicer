@@ -16,6 +16,7 @@ DIST_SD = 0
 SQUIGGLE_PREPROCESSING=True
 WAVELET_DENOISE = False
 MEDIAN_DENOISE = False
+
 # Control the level of Wavelet denoise 
 #WAVELET_LEVEL = np.ceil(np.log(len(squiggle)))
 # segmentation parameter
@@ -28,11 +29,10 @@ SPIKE_THRES = 4
 
 # DTW
 BANDWIDTH_PROP = 0.4
-DIST_TYPE = 'manhattan'
-
+DIST_TYPE = 'log_likelihood'
 
 # minimum data point assigned to a k-mer in dtw
-UNIFORM_DWELL = 4
+#UNIFORM_DWELL = 4
 MINIMUM_POINT_FOR_DIST_SEG = 4
 
 # prior ratio for sequence pattern

@@ -169,7 +169,7 @@ def parse_arg():
     trim_model = 0
     dtw_adj = False
     bandwidth = BANDWIDTH_PROP
-    flank_size = 20
+    flank_size = 21
     window = 10
     include_mapped_junc = False
     min_support = 3
@@ -411,6 +411,7 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
     dist_type = DIST_TYPE
     #dist_type = None
     test_read_ids = []
+    test_candidates= []
 
     # dtw version (function alias)
     def dtw_local_alignment(candidate_squiggle, junction_squiggle, 
@@ -456,6 +457,10 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
         candidate_tuples = canonical_site_finder(read, jwr.loc, 
                                           ref_FastaFile, 
                                           window, jwr.chrID)
+
+        # for test only
+        if len(test_candidates) and not len(set(test_candidates) & set(candidate_tuples)):
+            continue
 
         if len(map_support_junc_df):
             # mapped splice junction in a window nearby
@@ -600,11 +605,15 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                     j_squiggle.median_smoother(inplace = True)
                 segment_summary = j_squiggle.segment_summary(SEGMENT_NUM,
                                             MIN_BASE_OBS, 
-                                            SEGMENT_WIN_SIZE)
+                                            SEGMENT_WIN_SIZE,
+                                            plot_fig = False)
 
                 dtw_rst= \
                     dtw_local_alignment(candidate_squiggle = candidate_squiggle, 
                                 junction_squiggle = segment_summary[:,0])
+                
+                if plot_alignment:
+                    dtw_rst.plot_alignment(save_fig="{}_cand_{}.png".format(read.qname,j))
 
                 # if j == index_m:
                 #     pass
@@ -1089,7 +1098,8 @@ def tombo_squiggle_to_basecalls(multi_fast5, AlignedSegment):
     # extract read info
     #fast5s_f = get_fast5_file(read_fast5_fn, 'r')
     #fast5_data = h5py.File
-    seq_samp_type = tombo_helper.seqSampleType(SAMPLE_TYPE, True)
+    
+    seq_samp_type = tombo_helper.seqSampleType(SAMPLE_TYPE, bool(SAMPLE_TYPE == 'RNA'))
     #seq_data = resquiggle.get_read_seq(fast5_data, 'Basecall_1D_000', 'BaseCalled_template', seq_samp_type, 0)
     
     if AlignedSegment.is_reverse:
