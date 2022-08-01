@@ -71,6 +71,7 @@ from junction_identification import find_candidate, canonical_site_finder, \
 from junc_annotation import GetJuncFromBed, Mapped_junc
 import dtw
 import junction_support_bed as jsb
+import squiggle_preprocessing as sp 
 
 def parse_arg():
     def print_help():
@@ -405,30 +406,22 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
         <to be added>
     '''               
     np.random.seed(2021)
-    bandwidth = 0.8
-    UNIFORM_DWELL = 1
-    dist_type = 'manhattan'
+    bandwidth = BANDWIDTH_PROP
+    UNIFORM_DWELL = 1 #fixed
+    dist_type = DIST_TYPE
     #dist_type = None
-    SAVE_DATA = True
-    
-    test_read_ids = ['dbb8f632-a521-436d-b7e9-a2b50982773e',
-                     '783674b2-02df-4958-aad5-0047e18b9b0b',
-                     '0b2f777b-bf7f-43b8-8d0b-92f6d5ddc058',
-                     '1fe6c1f5-dcb9-44b9-bcd6-f9394bc7766a',
-                     '2fc08306-3481-40c4-b84e-84159bd4a730',
-                     '4e227d6d-3b4a-477b-925a-75a59ad2d371']
-    MIN_DWELL = 4
+    test_read_ids = []
 
     # dtw version (function alias)
     def dtw_local_alignment(candidate_squiggle, junction_squiggle, 
                             bandwidth = bandwidth, dist_type = dist_type):
 
-        dtw_rst = dtw.dtw_local_alignment_mean_of_seg_mean(
+        dtw_rst = dtw.dtw_local_alignment(
                     candidate_squiggle=candidate_squiggle,
                    junction_squiggle=junction_squiggle, 
                    band_prop = bandwidth,
                    dist_type = dist_type, 
-                   max_z = MAX_Z).dtw_alignment(min_dwell = MIN_DWELL)
+                   max_z = MAX_Z).dtw_alignment()
         return dtw_rst
 
     # prepare the inputs
@@ -579,12 +572,12 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
 
         for j, candidate in enumerate(candidates_for_read):
             candidate_squiggle = np.array(model_dic[candidate],float)
+            
             if SAVE_DATA:
                 np.savetxt("sd_of_median_{}.csv".format(jwr.id), np.array([sd_of_median]), delimiter=",")
                 is_minimap = 'minimap' if  j == index_m else ''
                 np.savetxt("candidate_org_{}{}_{}({}).csv".format(j,is_minimap, jwr.id,jwr.loc[0]), candidate_squiggle, delimiter=",")
-            if MEDIAN_DENOISE:
-                junction_squiggle = median_smoother(junction_squiggle,MEDIAN_DENOISE_WIN)
+            
 
             if WAVELET_DENOISE:
                 wavelet_levels = int(np.ceil(np.log2(len(junction_squiggle))))
@@ -600,13 +593,35 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                 #     dtw_local_alignment(candidate_squiggle = candidate_squiggle, 
                 #                         junction_squiggle = junction_squiggle_wav)
 
-            dtw_rst= \
-                dtw_local_alignment(candidate_squiggle = candidate_squiggle, 
-                                junction_squiggle = junction_squiggle)
+            
+            if SQUIGGLE_PREPROCESSING:
+                j_squiggle=sp.junction_squiggle_preprocessing(junction_squiggle)
+                if MEDIAN_DENOISE:
+                    j_squiggle.median_smoother(inplace = True)
+                segment_summary = j_squiggle.segment_summary(SEGMENT_NUM,
+                                            MIN_BASE_OBS, 
+                                            SEGMENT_WIN_SIZE)
 
-            if j == index_m:
-                dtw_rst.plot_cum_matrix(save_fig='cum_matrix_{}.png'.format(jwr.id[:5])) 
-            path , score, cum_matrix = dtw_rst.dtw_path, dtw_rst.dtw_score, dtw_rst.cum_matrix
+                dtw_rst= \
+                    dtw_local_alignment(candidate_squiggle = candidate_squiggle, 
+                                junction_squiggle = segment_summary[:,0])
+
+                # if j == index_m:
+                #     pass
+                #     dtw_rst.plot_cum_matrix(save_fig='cum_matrix_{}.png'.format(jwr.id[:5])) 
+                path , score, cum_matrix = dtw_rst.dtw_path, dtw_rst.dtw_score, dtw_rst.cum_matrix
+                # revert to original scale
+                path = np.repeat(path, segment_summary[:,1].astype(int), axis = 0)
+
+            else:    
+                dtw_rst= \
+                    dtw_local_alignment(candidate_squiggle = candidate_squiggle, 
+                                    junction_squiggle = junction_squiggle)
+
+                # if j == index_m:
+                #     pass
+                #     dtw_rst.plot_cum_matrix(save_fig='cum_matrix_{}.png'.format(jwr.id[:5])) 
+                path , score, cum_matrix = dtw_rst.dtw_path, dtw_rst.dtw_score, dtw_rst.cum_matrix
 
 
             # log likelihood (from DTW score to log likelihood)
@@ -1074,7 +1089,7 @@ def tombo_squiggle_to_basecalls(multi_fast5, AlignedSegment):
     # extract read info
     #fast5s_f = get_fast5_file(read_fast5_fn, 'r')
     #fast5_data = h5py.File
-    seq_samp_type = tombo_helper.seqSampleType('RNA', True)
+    seq_samp_type = tombo_helper.seqSampleType(SAMPLE_TYPE, True)
     #seq_data = resquiggle.get_read_seq(fast5_data, 'Basecall_1D_000', 'BaseCalled_template', seq_samp_type, 0)
     
     if AlignedSegment.is_reverse:
