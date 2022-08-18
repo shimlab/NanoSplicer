@@ -223,8 +223,7 @@ Details
 1. Visulisation module: ploting the alignment between the junction squiggle and the candidate squiggle(s).
 
 ## Known issues
-1. There will be a performance warning when running `JWR_checker` and `JWR_subset`. **The warning can be ignored**. The warning is triggered when data is saved into the HDF5 file. It relates to python objects that can not be directly converted to c-type, causing non-optimal performance of the HDF5 file. 
-2. The progress bar in `NanoSplicer.py` is based on the number of fast5 files that have been processed. If there is only 1 fast5 file being processed (e.g. in `example/fast5/`), the progress bar will be at 0% (0/1 completed) until the run has finished. 
+The progress bar in `NanoSplicer.py` is based on the number of fast5 files that have been processed. If there is only 1 fast5 file being processed (e.g. in `example/fast5/`), the progress bar will be at 0% (0/1 completed) until the run has finished. 
 
 ## Citing NanoSplicer
 

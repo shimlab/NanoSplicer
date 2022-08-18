@@ -5,11 +5,16 @@ Subset the output of JWR_checker by:
     --best_JAQ: a number from 0-1, JWRs with JAQ 
                 above the threshold will not be included
 '''
+import warnings
 import pandas as pd
 import sys
 import getopt
 import textwrap
 import helper
+
+# suppress pd performace warning
+warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
+
 
 class JWR_subset_param:
     def __init__(self, arg = sys.argv):

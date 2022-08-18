@@ -16,6 +16,7 @@
             6. JAQ: <float> junction alignment quality
 '''
 import h5py
+import warnings
 import pandas as pd
 import textwrap
 import pysam
@@ -30,6 +31,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import multiprocessing as mp
 import helper
 
+# suppress pd performace warning
+warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
 class JWR_to_hdf(h5py.File):
     '''
