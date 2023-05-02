@@ -227,7 +227,7 @@ The progress bar in `NanoSplicer.py` is based on the number of fast5 files that 
 
 ## Citing NanoSplicer
 
-If you find NanoSplcier useful for your work, please cite our paper:
+If you find NanoSplicer useful for your work, please cite our paper:
 
 > Yupei You, Michael B. Clark, Heejung Shim (2022). *NanoSplicer: Accurate identification of splice
 > junctions using Oxford Nanopore sequencing.* [You et al. (2022)][NanoSplicer-bioinformatics].
