@@ -82,15 +82,21 @@ class JWR_subset_param:
 def main():
     param = JWR_subset_param()
     d = pd.read_hdf(param.input_h5, 'data')
+    
     original_total = len(d)
     
     if param.chrID:
         d = d[d.chrID == param.chrID]
-    
+        if not len(d):
+            helper.err_msg("ERROR:No JWRs found in the specified chromosome.")
+            sys.exit(1)
     if param.g_loc:
-        d = d[d.loc.apply(lambda x: 
+        d = d[d['loc'].apply(lambda x: 
             x[0] >= param.g_loc[0] and x[1] <= param.g_loc[1])]
-    
+        if not len(d):
+            helper.err_msg("ERROR:No JWRs found in the specified region.")
+            sys.exit(1)
+
     if param.best_jaq:
         d[d.JAQ <= param.best_jaq].to_hdf(param.output_h5, 'data')
         if param.output_csv:
