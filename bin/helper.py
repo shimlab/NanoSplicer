@@ -217,35 +217,7 @@ class Fast5Class(object):
 
 		return(signal[start:end])
 
-	def get_alignment(self, output=None):
-		with h5py.File(self.filename, 'r') as h5_f:
-			path = "Analyses/"
-			subpath = list(h5_f[path].keys())
 			
-			for i in subpath:
-				if "RawGenomeCorrected" in i:
-					path = path + i +'/BaseCalled_template/'
-
-			try:
-				self.mapped = dict(h5_f[path]["Alignment"].attrs)
-				self.events = np.array(h5_f[path]["Events"])
-				self.read_start_rel_to_raw = \
-					h5_f[path]["Events"].attrs['read_start_rel_to_raw']
-				self.norm_shift = h5_f[path].attrs['shift']
-				 # rescale MAD to sd (https://en.wikipedia.org/wiki/Median_absolute_deviation)
-				self.norm_scale = h5_f[path].attrs['scale']*1.4826
-			except:
-				print("Alignment doesn't exist in fast5!!")
-				self.mapped = False
-			
-			if output == "mapping_info":
-				return self.mapped
-			elif output == "events":
-				return self.events
-			elif output == "norm_params":
-				return self.norm_shift, self.norm_scale
-			else:
-				return None
 	def remove_outlier(self, normalised_signal, thresh = 3):
 		'''
 		remove the data points in signal whose obsolute value reaches the thresh.
