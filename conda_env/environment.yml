@@ -18,3 +18,4 @@ dependencies:
   - pip:
     - ont_fast5_api
     - tables
+    - pod5
