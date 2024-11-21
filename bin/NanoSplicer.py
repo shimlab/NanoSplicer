@@ -63,6 +63,7 @@ from pathlib import Path
 from ont_fast5_api.fast5_interface import get_fast5_file        
 from scipy.stats.mstats import theilslopes
 from tombo import tombo_helper, tombo_stats, resquiggle
+import pod5 
 
 
 # denosing
@@ -386,9 +387,20 @@ def main():
     else:
         map_support_junc_df = pd.DataFrame([])
 
+
     # get fast5 filenames recursively
     fast5_paths = Path(fast5_dir).rglob('*.fast5') # iterator
     fast5_paths = list(fast5_paths)
+    
+
+    # Check if read filetype is pod5 or fast5
+    if len(fast5_paths) == 0:
+        type_pod5 = True
+        fast5_paths = Path(fast5_dir).rglob('*.pod5')
+        fast5_paths = list(fast5_paths)
+    else:
+        type_pod5 = False
+        
 
     # start to processing the fast5 (multiread format)
     print("running process")
@@ -417,7 +429,7 @@ def main():
                                 plot_LR,
                                 find_GCAG, 
                                 find_ATAC,
-                                provided_junction_only) for f in fast5_paths]
+                                provided_junction_only, type_pod5) for f in fast5_paths]
     
     for future in as_completed(futures):
         pbar.update(1)
@@ -452,7 +464,7 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
                     window, flank_size, trim_model, trim_signal,
                     bandwidth, prob_table_fn, jwr_bed_fn, anno_df, 
                     map_support_junc_df, plot_alignment, plot_LR,find_GCAG, 
-                    find_ATAC, provided_junction_only):
+                    find_ATAC, provided_junction_only, type_pod5):
     '''
     Description:
         Run a single process within a certain multi-read fast5
@@ -491,8 +503,13 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
     # prepare the inputs
     AlignmentFile = pysam.AlignmentFile(AlignmentFile) 
     ref_FastaFile = pysam.FastaFile(ref_FastaFile)
-    multi_fast5 = get_fast5_file(fast5_path, 'r')
-    reads_in_file = set(multi_fast5.get_read_ids())         
+    if type_pod5:
+        multi_fast5 = pod5.Reader(fast5_path) 
+        reads = list(multi_fast5.reads()) # An iterator
+        reads_in_file = [str(read.read_id) for read in reads]
+    else:
+        multi_fast5 = get_fast5_file(fast5_path, 'r')
+        reads_in_file = set(multi_fast5.get_read_ids())       
     failed_jwr = pd.DataFrame(columns = ['id', 'chrID' ,'loc', 'JAQ', 'error_msg'])    
 
     # loop though each row in output_df
@@ -634,7 +651,7 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
         #tombo resquiggle
         try:
             tombo_results, tombo_start_clip, tombo_end_clip, std_ref, sd_of_median= \
-                tombo_squiggle_to_basecalls(multi_fast5, read)
+                tombo_squiggle_to_basecalls(multi_fast5, read, type_pod5)
         except:
             failed_jwr = write_err_msg(failed_jwr, jwr, 'Fail to resquiggle (Tombo).')
             continue
@@ -1147,7 +1164,7 @@ def get_gaps_in_read(AlignedSegment):
     gap = set([(blocks[i-1][1], blocks[i][0]) for i in range(len(blocks))])
     return gap
 
-def tombo_squiggle_to_basecalls(multi_fast5, AlignedSegment):
+def tombo_squiggle_to_basecalls(multi_fast5, AlignedSegment, type_pod5):
     '''
     script from tombo (https://gist.github.com/marcus1487/5cf083644143aafc770dceb213783346)
     Input:
@@ -1187,7 +1204,10 @@ def tombo_squiggle_to_basecalls(multi_fast5, AlignedSegment):
 
     # extract raw signal
     #all_raw_signal = tombo_helper.get_raw_read_slot(fast5_data)['Signal'][:]
-    all_raw_signal = multi_fast5.get_read(AlignedSegment.qname).get_raw_data()
+    if not type_pod5:
+        all_raw_signal = multi_fast5.get_read(AlignedSegment.qname).get_raw_data()
+    else:
+        all_raw_signal = next(multi_fast5.reads([AlignedSegment.qname])).signal # generator
     # if this is a direct RNA read, flip raw signal to process from 5' to 3'
     if seq_samp_type.rev_sig:
         all_raw_signal = all_raw_signal[::-1]
