@@ -63,7 +63,7 @@ from pathlib import Path
 from ont_fast5_api.fast5_interface import get_fast5_file        
 from scipy.stats.mstats import theilslopes
 from tombo import tombo_helper, tombo_stats, resquiggle
-import pod5 
+from pod5 import Reader
 
 
 # denosing
@@ -82,11 +82,12 @@ def parse_arg():
         Usage: python3 {} [OPTIONS] <JWR_checker/JWR_subset hdf5 file>
         Options:
             -i      .bam/.sam file (required)
-            -f      path to fast5s (required)
+            -f      path to fast5s or pod5s (required)
             -r      Genome reference file (required)
             -o      Prefix for output files <default: './output'>.
             --threads
                     Number of threads used <default: # of available cpus - 1>.
+            -F      File type. Enter p for pod5 or f for fast5 (optional)   
 
         More option on the candidate splice junctions (optional):
             By default, for each JWR, NanoSplicer includes the mapped splice junction and all GT-AG 
@@ -129,7 +130,7 @@ def parse_arg():
             -T      Number of events trimmed from scrappie model <default: 0>
             -t      Number of bases trimmed from raw signam, the raw samples are
                         match to basecalled bases by tombo <default :6>
-            -F      Flanking sequence size in each side of candidate searching 
+            -S      Flanking sequence size in each side of candidate searching 
                         window <default: 20>
             -w      Candidate searching window size <default: 10>
             -c      Config filename <default: 'config'>
@@ -146,9 +147,9 @@ def parse_arg():
     
     
     try: 
-        opts, args = getopt.getopt(argv[1:],"hi:f:r:o:T:t:b:F:w:c:",
+        opts, args = getopt.getopt(argv[1:],"hi:f:r:o:ft:T:t:b:F:w:c:",
                     ["help","input_alignment=","input_fast5_dir=",
-                    "genome_ref=","output_path=", "trim_model=",
+                    "genome_ref=","output_path=","file_type=","trim_model=",
                     "trim_signal=","dtw_adj","bandwidth=",
                     "flank_size=", "window=", "config_file=", 
                     "annotation_bed=", "plot_alignment", "plot_LR", 
@@ -176,7 +177,7 @@ def parse_arg():
     globals().update({k: getattr(mdl, k) for k in names})
 
     # DEFAULT VALUE
-    alignment_file, fast5_dir, genome_ref = None, None, None
+    alignment_file, fast5_dir, genome_ref, file_type = None, None, None, None
     out_fn = OUTPUT_FILENAME
     plot_alignment = PLOT_ALIGNMENT
     plot_LR = PLOT_LR
@@ -242,6 +243,8 @@ def parse_arg():
             find_ATAC = True
         elif opt == "--provided_junction_only":
             provided_junction_only = True
+        elif opt in ("-ft", "--file_type"):
+            file_type = arg
 
     # import global variable from config file 
     mdl = importlib.import_module(config_file)
@@ -299,7 +302,7 @@ def parse_arg():
                    band_prop = bandwidth,
                    dist_type = dist_type).dtw_local_alignment()
     
-    return fast5_dir, out_fn, alignment_file, genome_ref, \
+    return fast5_dir, out_fn, alignment_file, genome_ref, file_type, \
             bandwidth, trim_model, trim_signal, flank_size, \
              window, pd_file, anno_fn, non_cano_anno_fn, \
              plot_alignment, plot_LR, include_mapped_junc, min_support,\
@@ -308,7 +311,7 @@ def parse_arg():
 
 def main():
     # parse command line argument
-    fast5_dir, out_fn, alignment_file, genome_ref, bandwidth, trim_model, \
+    fast5_dir, out_fn, alignment_file, genome_ref, file_type, bandwidth, trim_model, \
         trim_signal, flank_size, window, pd_file, anno_fn, non_cano_anno_fn, \
         plot_alignment, plot_LR, include_mapped_junc, min_support,\
         min_JAQ_support, n_process, find_GCAG, find_ATAC, \
@@ -388,18 +391,27 @@ def main():
         map_support_junc_df = pd.DataFrame([])
 
 
-    # get fast5 filenames recursively
-    fast5_paths = Path(fast5_dir).rglob('*.fast5') # iterator
-    fast5_paths = list(fast5_paths)
-    
+    if file_type is not None:
+        if file_type == 'p':
+            type_pod5 = True
+            fast5_paths = Path(fast5_dir).rglob('*.pod5')
+            fast5_paths = list(fast5_paths)
+        elif file_type == 'f':
+            # get fast5 filenames recursively
+            fast5_paths = Path(fast5_dir).rglob('*.fast5') # iterator
+            fast5_paths = list(fast5_paths)
+            type_pod5 = False
 
-    # Check if read filetype is pod5 or fast5
-    if len(fast5_paths) == 0:
-        type_pod5 = True
-        fast5_paths = Path(fast5_dir).rglob('*.pod5')
+    else: # File type not provided as command line option
+        fast5_paths = Path(fast5_dir).rglob('*.fast5') # iterator
         fast5_paths = list(fast5_paths)
-    else:
         type_pod5 = False
+        # Check length of paths - will be zero if no paths ending in .fast5.
+        if len(fast5_paths) == 0:   #O(1) 
+            type_pod5 = True
+            fast5_paths = Path(fast5_dir).rglob('*.pod5')
+            fast5_paths = list(fast5_paths)
+            
         
 
     # start to processing the fast5 (multiread format)
@@ -504,7 +516,7 @@ def run_multifast5(fast5_path, jwr_df, AlignmentFile, ref_FastaFile,
     AlignmentFile = pysam.AlignmentFile(AlignmentFile) 
     ref_FastaFile = pysam.FastaFile(ref_FastaFile)
     if type_pod5:
-        multi_fast5 = pod5.Reader(fast5_path) 
+        multi_fast5 = Reader(fast5_path) 
         reads = list(multi_fast5.reads()) # An iterator
         reads_in_file = [str(read.read_id) for read in reads]
     else:
