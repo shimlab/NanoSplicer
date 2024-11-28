@@ -122,6 +122,7 @@ Requires path to reads in fast5 (squiggle) format and a matched mapped .bam/.sam
             -o      Prefix for output files <default: './output'>.
             --threads
                     Number of threads used <default: # of available cpus - 1>.
+            -F      File type. Use p for pod5 and f for fast5.
         More option on the candidate splice junctions (optional):
             By default, for each JWR, NanoSplicer includes the mapped splice junction and all GT-AG 
             junctions nearby, use the following options to choose candidates in different ways.
