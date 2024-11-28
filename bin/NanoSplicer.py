@@ -243,7 +243,7 @@ def parse_arg():
             find_ATAC = True
         elif opt == "--provided_junction_only":
             provided_junction_only = True
-        elif opt in ("-ft", "--file_type"):
+        elif opt in ("-F", "--file_type"):
             file_type = arg
 
     # import global variable from config file 
